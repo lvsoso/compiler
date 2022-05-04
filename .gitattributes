@@ -1,0 +1,8 @@
+llvm/cmp.out filter=lfs diff=lfs merge=lfs -text
+llvm/hello.out filter=lfs diff=lfs merge=lfs -text
+llvm/ifelse.out filter=lfs diff=lfs merge=lfs -text
+llvm/limit-loop.out filter=lfs diff=lfs merge=lfs -text
+llvm/loop.out filter=lfs diff=lfs merge=lfs -text
+llvm/phi.out filter=lfs diff=lfs merge=lfs -text
+llvm/printf.out filter=lfs diff=lfs merge=lfs -text
+llvm/calc.out filter=lfs diff=lfs merge=lfs -text
