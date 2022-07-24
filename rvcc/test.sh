@@ -30,7 +30,12 @@ assert(){
   fi
 }
 
+# assert expect got
+# [1] 返回指定数
 assert 0 0
 assert 42 42
+
+# [2] 支持+ -运算符
+assert 34 '12-34+56'
 
 echo OK
