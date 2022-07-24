@@ -1,0 +1,14 @@
+*.log
+
+a.out
+
+**/*.o
+**/*.s
+
+/tmp*
+/rvcc
+
+build/
+.cache/
+.vscode/
+.dist/
