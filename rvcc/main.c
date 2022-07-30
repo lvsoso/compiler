@@ -25,6 +25,8 @@ struct Token
     int Len;
 };
 
+static char *CurrentInput;
+
 // error struct for output
 // static means can be access in file
 // Fmt is a format str,
@@ -50,6 +52,39 @@ static void error(char *Fmt, ...)
     exit(1);
 }
 
+
+// ouput the position and exit.
+static void verrorAt(char*Loc, char *Fmt, va_list VA)
+{
+    fprintf(stderr, "%s\n", CurrentInput);
+
+    // 计算出错的位置，Loc是出错位置的指针，CurrentInput是当前输入的首地址
+    // 补充空格将起始符号移动到出错位置
+    int Pos = Loc - CurrentInput;
+    fprintf(stderr, "%*s", Pos, "");
+    fprintf(stderr, "^ ");
+    vfprintf(stderr, Fmt, VA);
+    fprintf(stderr, "\n");
+    va_end(VA);
+    exit(1);
+
+}
+
+// 字符解析出错
+static void errorAt(char *Loc, char *Fmt, ...)
+{
+    va_list VA;
+    va_start(VA, Fmt);
+    verrorAt(Loc, Fmt, VA);
+}
+
+// Tok解析出错
+static void errorTok(Token *Tok, char *Fmt, ...) {
+  va_list VA;
+  va_start(VA, Fmt);
+  verrorAt(Tok->Loc, Fmt, VA);
+}
+
 // judge Tok's value if equal to Str
 static bool equal(Token *Tok, char *Str)
 {
@@ -60,7 +95,7 @@ static bool equal(Token *Tok, char *Str)
 static Token *skip(Token *Tok, char *Str)
 {
     if (!equal(Tok, Str))
-        error("expect '%s'", Str);
+        errorTok(Tok, "expect '%s'", Str);
     return Tok->Next;
 }
 
@@ -68,14 +103,14 @@ static Token *skip(Token *Tok, char *Str)
 static int getNumber(Token *Tok)
 {
     if (Tok->Kind != TK_NUM)
-        error("expect a number");
+        errorTok(Tok, "expect a number");
     return Tok->Val;
 }
 
 // new Token
 static Token *newToken(TokenKind Kind, char *Start, char *End)
 {
-    Token *Tok = calloc(1, sizeof(Token));
+    Token * Tok = calloc(1, sizeof(Token));
     Tok->Kind = Kind;
     Tok->Loc = Start;
     Tok->Len = End - Start;
@@ -83,8 +118,9 @@ static Token *newToken(TokenKind Kind, char *Start, char *End)
 }
 
 // 终结符解析
-static Token *tokenize(char *P)
+static Token *tokenize()
 {
+    char *P = CurrentInput;
     Token Head = {};
     Token *Cur = &Head;
 
@@ -120,7 +156,7 @@ static Token *tokenize(char *P)
         }
 
         // unknown character
-        error("invalid token: %c", *P);
+        errorAt(P, "invalid token");
     }
 
     // end of the parse
@@ -137,7 +173,8 @@ int main(int Argc, char **Argv)
     }
 
     // parsing argv
-    Token *Tok = tokenize(Argv[1]);
+  CurrentInput = Argv[1];
+  Token *Tok = tokenize();
 
     printf("  .globl main\n");
     printf("main:\n");
