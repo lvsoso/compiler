@@ -123,6 +123,22 @@ static Token *newToken(TokenKind Kind, char *Start, char *End)
     return Tok;
 }
 
+// judge a string start with sub-string
+static bool startsWith(char *Str, char *SubStr){
+  return strncmp(Str, SubStr, strlen(SubStr)) == 0;
+}
+
+// read operator
+static int readPunct(char *Ptr) {
+  // 2 bytes
+  if (startsWith(Ptr, "==") || startsWith(Ptr, "!=") || startsWith(Ptr, "<=") || startsWith(Ptr, ">=")){
+    return 2;
+  }
+
+  // 1 byte
+  return ispunct(*Ptr) ? 1 : 0;
+}
+
 // 终结符解析
 static Token *tokenize()
 {
@@ -152,13 +168,13 @@ static Token *tokenize()
         }
 
         //  parsing op
-        if (ispunct(*P))
-        {
-            // op's len == 1
-            Cur->Next = newToken(TK_PUNCT, P, P + 1);
-            Cur = Cur->Next;
-            ++P;
-            continue;
+        int PunctLen = readPunct(P);
+        if (PunctLen) {
+          Cur->Next = newToken(TK_PUNCT, P, P + PunctLen);
+          Cur = Cur->Next;
+          // move the pointer
+          P += PunctLen;
+          continue;
         }
 
         // unknown character
@@ -183,6 +199,10 @@ typedef enum {
     ND_DIV, // /
     ND_NUM, // interger
     ND_NEG, // 负号 -
+    ND_EQ,  // ==
+    ND_NE,  // !=
+    ND_LT,  // <
+    ND_LE,  // <=
 } NodeKind;
 
 // AST binary tree's node
@@ -225,17 +245,89 @@ static Node *newNum(int Val) {
     return Nd;
 }
 
-// expr = mul ("+" mul | "-" mul)*
+// expr = equality
+// equality = relational ("==" relational | "!=" relational)*
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+// add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-") unary | primary
 // primary = "(" expr ")" | num
 static Node *expr(Token **Rest, Token *Tok);
+static Node *equality(Token **Rest, Token *Tok);
+static Node *relational(Token **Rest, Token *Tok);
+static Node *add(Token **Rest, Token *Tok);
 static Node *mul(Token **Rest, Token *Tok);
 static Node *unary(Token **Rest, Token *Tok);
 static Node *primary(Token **Rest, Token *Tok);
 
-// expr = mul ("+" mul | "-" mul)*
-static Node *expr(Token **Rest, Token *Tok) {
+// expr = equality
+static Node *expr(Token **Rest, Token *Tok) { 
+  return equality(Rest, Tok); 
+}
+
+// equality = relational ("==" relational | "!=" relational)*
+static Node *equality(Token **Rest, Token *Tok) {
+  // relational
+  Node *Nd = relational(&Tok, Tok);
+
+  // ("==" relational | "!=" relational)*
+  while (true) {
+    // "==" relational
+    if (equal(Tok, "==")) {
+      Nd = newBinary(ND_EQ, Nd, relational(&Tok, Tok->Next));
+      continue;
+    }
+
+    // "!=" relational
+    if (equal(Tok, "!=")) {
+      Nd = newBinary(ND_NE, Nd, relational(&Tok, Tok->Next));
+      continue;
+    }
+
+    *Rest = Tok;
+    return Nd;
+  }
+}
+
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+static Node *relational(Token **Rest, Token *Tok) {
+  // add
+  Node *Nd = add(&Tok, Tok);
+
+  // ("<" add | "<=" add | ">" add | ">=" add)*
+  while (true) {
+    // "<" add
+    if (equal(Tok, "<")) {
+      Nd = newBinary(ND_LT, Nd, add(&Tok, Tok->Next));
+      continue;
+    }
+
+    // "<=" add
+    if (equal(Tok, "<=")) {
+      Nd = newBinary(ND_LE, Nd, add(&Tok, Tok->Next));
+      continue;
+    }
+
+    // ">" add
+    // X>Y  ~ Y<X
+    if (equal(Tok, ">")) {
+      Nd = newBinary(ND_LT, add(&Tok, Tok->Next), Nd);
+      continue;
+    }
+
+    // ">=" add
+    // X>=Y ~ Y<=X
+    if (equal(Tok, ">=")) {
+      Nd = newBinary(ND_LE, add(&Tok, Tok->Next), Nd);
+      continue;
+    }
+
+    *Rest = Tok;
+    return Nd;
+  }
+}
+// add = mul ("+" mul | "-" mul)*
+static Node *add(Token **Rest, Token *Tok) {
   // mul
   Node *Nd = mul(&Tok, Tok);
 
@@ -384,6 +476,32 @@ static void genExpr(Node *Nd) {
     return;
   case ND_DIV: // / a0=a0/a1
     printf("  div a0, a0, a1\n");
+    return;
+  case ND_EQ:
+  case ND_NE:
+    // a0=a0^a1，异或指令
+    printf("  xor a0, a0, a1\n");
+    if (Nd->Kind == ND_EQ)
+      // a0==a1
+      // a0=a0^a1, sltiu a0, a0, 1
+      // sltiu：当作无符号数比较， a0 小于 1 则将 a0 置 1，小于1 的之有0，则
+      // 等于0则置1
+      printf("  seqz a0, a0\n");
+    else
+      // a0!=a1
+      // a0=a0^a1, sltu a0, x0, a0
+      // sltu： 当作无符号数比较， x0 小于 a0 则将 a0 置 1
+      // 不等于0则置1
+      printf("  snez a0, a0\n");
+    return;
+  case ND_LT:
+    printf("  slt a0, a0, a1\n");
+    return;
+  case ND_LE:
+    // a0<=a1等价于
+    // a0=a1<a0, a0=a1^1
+    printf("  slt a0, a1, a0\n");
+    printf("  xori a0, a0, 1\n");
     return;
   default:
     break;
