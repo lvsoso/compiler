@@ -26,6 +26,20 @@ static void pop(char *Reg)
   Depth--;
 }
 
+// get variables address
+static void genAddr(Node *Nd)
+{
+  if (Nd->Kind == ND_VAR)
+  {
+    // *8 each variable need 8 bytes
+    int Offset = (Nd->Name - 'a' + 1) * 8;
+    printf("  addi a0, fp, %d\n", -Offset);
+    return;
+  }
+
+  error("not an lvalue");
+}
+
 // 生成表达式
 static void genExpr(Node *Nd)
 {
@@ -40,6 +54,23 @@ static void genExpr(Node *Nd)
     genExpr(Nd->LHS);
     // neg a0, a0是 sub a0, x0的别名, a0，即a0=0-a0
     printf("  neg a0, a0\n");
+    return;
+  // 变量
+  case ND_VAR:
+    // 计算出变量的地址，然后存入a0
+    genAddr(Nd);
+    // 访问a0地址中存储的数据，存入到a0当中
+    printf("  ld a0, 0(a0)\n");
+    return;
+  // 赋值
+  case ND_ASSIGN:
+    // 左部是左值，保存值到的地址
+    genAddr(Nd->LHS);
+    push();
+    // 右部是右值，为表达式的值
+    genExpr(Nd->RHS);
+    pop("a1");
+    printf("  sd a0, 0(a1)\n");
     return;
   default:
     break;
@@ -117,11 +148,40 @@ void codegen(Node *Nd)
   printf("  .globl main\n");
   printf("main:\n");
 
+  // 栈布局
+  //-------------------------------// sp
+  //              fp                  fp = sp-8
+  //-------------------------------// fp
+  //              'a'                 fp-8
+  //              'b'                 fp-16
+  //              ...
+  //              'z'                 fp-208
+  //-------------------------------// sp=sp-8-208
+  //           表达式计算
+  //-------------------------------//
+
+  // Prologue
+  // 将fp压入栈中，保存fp的值
+  printf("  addi sp, sp, -8\n");
+  printf("  sd fp, 0(sp)\n");
+  // 将sp写入fp
+  printf("  mv fp, sp\n");
+
+  // 26个字母*8字节=208字节，栈腾出208字节的空间
+  printf("  addi sp, sp, -208\n");
+
   for (Node *N = Nd; N; N = N->Next)
   {
     genStmt(N);
     assert(Depth == 0);
   }
+
+  // Epilogue
+  // 将fp的值改写回sp
+  printf("  mv sp, fp\n");
+  // 将最早fp保存的值弹栈，恢复fp。
+  printf("  ld fp, 0(sp)\n");
+  printf("  addi sp, sp, 8\n");
 
   printf("  ret\n");
 }

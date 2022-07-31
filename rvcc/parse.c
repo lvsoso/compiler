@@ -3,15 +3,17 @@
 // program = stmt*
 // stmt = exprStmt
 // exprStmt = expr ";"
-// expr = equality
+// expr = assign
+// assign = equality ("=" assign)?
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-") unary | primary
-// primary = "(" expr ")" | num
+// primary = "(" expr ")" | ident | num
 static Node *expr(Token **Rest, Token *Tok);
 static Node *exprStmt(Token **Rest, Token *Tok);
+static Node *assign(Token **Rest, Token *Tok);
 static Node *equality(Token **Rest, Token *Tok);
 static Node *relational(Token **Rest, Token *Tok);
 static Node *add(Token **Rest, Token *Tok);
@@ -20,21 +22,24 @@ static Node *unary(Token **Rest, Token *Tok);
 static Node *primary(Token **Rest, Token *Tok);
 
 // new a node
-static Node *newNode(NodeKind Kind){
-    Node *Nd = calloc(1, sizeof(Node));
-    Nd->Kind = Kind;
-    return Nd;
+static Node *newNode(NodeKind Kind)
+{
+  Node *Nd = calloc(1, sizeof(Node));
+  Nd->Kind = Kind;
+  return Nd;
 }
 
 // new single tree node
-static Node *newUnary(NodeKind Kind, Node *Expr) {
+static Node *newUnary(NodeKind Kind, Node *Expr)
+{
   Node *Nd = newNode(Kind);
   Nd->LHS = Expr;
   return Nd;
 }
 
 // new a binary node
-static Node *newBinary(NodeKind Kind, Node *LHS, Node *RHS) {
+static Node *newBinary(NodeKind Kind, Node *LHS, Node *RHS)
+{
   Node *Nd = newNode(Kind);
   Nd->LHS = LHS;
   Nd->RHS = RHS;
@@ -42,44 +47,73 @@ static Node *newBinary(NodeKind Kind, Node *LHS, Node *RHS) {
 }
 
 //  new a number node
-static Node *newNum(int Val) {
-    Node *Nd = newNode(ND_NUM);
-    Nd->Val = Val;
-    return Nd;
+static Node *newNum(int Val)
+{
+  Node *Nd = newNode(ND_NUM);
+  Nd->Val = Val;
+  return Nd;
+}
+
+// new variable
+static Node *newVarNode(char Name)
+{
+  Node *Nd = newNode(ND_VAR);
+  Nd->Name = Name;
+  return Nd;
 }
 
 // stmt = exprStmt
-static Node *stmt(Token **Rest, Token *Tok) { 
-  return exprStmt(Rest, Tok); 
+static Node *stmt(Token **Rest, Token *Tok)
+{
+  return exprStmt(Rest, Tok);
 }
 
 // exprStmt = expr ";"
-static Node *exprStmt(Token **Rest, Token *Tok) {
+static Node *exprStmt(Token **Rest, Token *Tok)
+{
   Node *Nd = newUnary(ND_EXPR_STMT, expr(&Tok, Tok));
   *Rest = skip(Tok, ";");
   return Nd;
 }
 
-// expr = equality
-static Node *expr(Token **Rest, Token *Tok) { 
-  return equality(Rest, Tok); 
+// expr = assign
+static Node *expr(Token **Rest, Token *Tok)
+{
+  return assign(Rest, Tok);
 }
 
+// assign = equality ("=" assign)?
+static Node *assign(Token **Rest, Token *Tok)
+{
+  // equality
+  Node *Nd = equality(&Tok, Tok);
+
+  // 可能存在递归赋值，如a=b=1
+  // ("=" assign)?
+  if (equal(Tok, "="))
+    Nd = newBinary(ND_ASSIGN, Nd, assign(&Tok, Tok->Next));
+  *Rest = Tok;
+  return Nd;
+}
 // equality = relational ("==" relational | "!=" relational)*
-static Node *equality(Token **Rest, Token *Tok) {
+static Node *equality(Token **Rest, Token *Tok)
+{
   // relational
   Node *Nd = relational(&Tok, Tok);
 
   // ("==" relational | "!=" relational)*
-  while (true) {
+  while (true)
+  {
     // "==" relational
-    if (equal(Tok, "==")) {
+    if (equal(Tok, "=="))
+    {
       Nd = newBinary(ND_EQ, Nd, relational(&Tok, Tok->Next));
       continue;
     }
 
     // "!=" relational
-    if (equal(Tok, "!=")) {
+    if (equal(Tok, "!="))
+    {
       Nd = newBinary(ND_NE, Nd, relational(&Tok, Tok->Next));
       continue;
     }
@@ -90,34 +124,40 @@ static Node *equality(Token **Rest, Token *Tok) {
 }
 
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
-static Node *relational(Token **Rest, Token *Tok) {
+static Node *relational(Token **Rest, Token *Tok)
+{
   // add
   Node *Nd = add(&Tok, Tok);
 
   // ("<" add | "<=" add | ">" add | ">=" add)*
-  while (true) {
+  while (true)
+  {
     // "<" add
-    if (equal(Tok, "<")) {
+    if (equal(Tok, "<"))
+    {
       Nd = newBinary(ND_LT, Nd, add(&Tok, Tok->Next));
       continue;
     }
 
     // "<=" add
-    if (equal(Tok, "<=")) {
+    if (equal(Tok, "<="))
+    {
       Nd = newBinary(ND_LE, Nd, add(&Tok, Tok->Next));
       continue;
     }
 
     // ">" add
     // X>Y  ~ Y<X
-    if (equal(Tok, ">")) {
+    if (equal(Tok, ">"))
+    {
       Nd = newBinary(ND_LT, add(&Tok, Tok->Next), Nd);
       continue;
     }
 
     // ">=" add
     // X>=Y ~ Y<=X
-    if (equal(Tok, ">=")) {
+    if (equal(Tok, ">="))
+    {
       Nd = newBinary(ND_LE, add(&Tok, Tok->Next), Nd);
       continue;
     }
@@ -127,20 +167,24 @@ static Node *relational(Token **Rest, Token *Tok) {
   }
 }
 // add = mul ("+" mul | "-" mul)*
-static Node *add(Token **Rest, Token *Tok) {
+static Node *add(Token **Rest, Token *Tok)
+{
   // mul
   Node *Nd = mul(&Tok, Tok);
 
-   // ("+" mul | "-" mul)*
-  while (true) {
+  // ("+" mul | "-" mul)*
+  while (true)
+  {
     // "+" mul
-    if (equal(Tok, "+")) {
+    if (equal(Tok, "+"))
+    {
       Nd = newBinary(ND_ADD, Nd, mul(&Tok, Tok->Next));
       continue;
     }
 
     // "-" mul
-    if (equal(Tok, "-")) {
+    if (equal(Tok, "-"))
+    {
       Nd = newBinary(ND_SUB, Nd, mul(&Tok, Tok->Next));
       continue;
     }
@@ -152,20 +196,24 @@ static Node *add(Token **Rest, Token *Tok) {
 
 // 解析乘除
 // mul = unary ("*" unary | "/" unary)*
-static Node *mul(Token **Rest, Token *Tok) {
+static Node *mul(Token **Rest, Token *Tok)
+{
   // unary
   Node *Nd = unary(&Tok, Tok);
 
   // ("*" unary | "/" unary)*
-  while (true) {
+  while (true)
+  {
     // "*" unary
-    if (equal(Tok, "*")) {
+    if (equal(Tok, "*"))
+    {
       Nd = newBinary(ND_MUL, Nd, unary(&Tok, Tok->Next));
       continue;
     }
 
     // "/" unary
-    if (equal(Tok, "/")) {
+    if (equal(Tok, "/"))
+    {
       Nd = newBinary(ND_DIV, Nd, unary(&Tok, Tok->Next));
       continue;
     }
@@ -176,7 +224,8 @@ static Node *mul(Token **Rest, Token *Tok) {
 }
 
 // unary = ("+" | "-") unary | primary
-static Node *unary(Token **Rest, Token *Tok) {
+static Node *unary(Token **Rest, Token *Tok)
+{
   // "+" unary
   if (equal(Tok, "+"))
     return unary(Rest, Tok->Next);
@@ -190,17 +239,27 @@ static Node *unary(Token **Rest, Token *Tok) {
 }
 
 // 解析括号、数字
-// primary = "(" expr ")" | num
-static Node *primary(Token **Rest, Token *Tok) {
+// primary = "(" expr ")" | ident｜num
+static Node *primary(Token **Rest, Token *Tok)
+{
   // "(" expr ")"
-  if (equal(Tok, "(")) {
+  if (equal(Tok, "("))
+  {
     Node *Nd = expr(&Tok, Tok->Next);
     *Rest = skip(Tok, ")");
     return Nd;
   }
 
+  // ident
+  if (Tok->Kind == TK_IDENT) {
+    Node *Nd = newVarNode(*Tok->Loc);
+    *Rest = Tok->Next;
+    return Nd;
+  }
+  
   // num
-  if (Tok->Kind == TK_NUM) {
+  if (Tok->Kind == TK_NUM)
+  {
     Node *Nd = newNum(Tok->Val);
     *Rest = Tok->Next;
     return Nd;
@@ -211,12 +270,14 @@ static Node *primary(Token **Rest, Token *Tok) {
 }
 
 // syntax parser entry function
-Node *parse(Token *Tok) {
+Node *parse(Token *Tok)
+{
   Node Head = {};
   Node *Cur = &Head;
 
-    // stmt*
-  while (Tok->Kind != TK_EOF) {
+  // stmt*
+  while (Tok->Kind != TK_EOF)
+  {
     Cur->Next = stmt(&Tok, Tok);
     Cur = Cur->Next;
   }

@@ -17,6 +17,7 @@
 // Token Type
 typedef enum
 {
+    TK_IDENT, // ident, variable name or function name
     TK_PUNCT, // +, -
     TK_NUM,   // number
     TK_EOF,   // end
@@ -60,9 +61,10 @@ typedef enum {
     ND_NE,  // !=
     ND_LT,  // <
     ND_LE,  // <=
+    ND_ASSIGN, // assign variable's value
     ND_EXPR_STMT, // statement
     ND_NUM, // interger
-
+    ND_VAR, // variable
 } NodeKind;
 
 // AST binary tree's node
@@ -73,6 +75,7 @@ struct  Node
     Node *Next; // next node, next statment
     Node *LHS; // left-hand side
     Node *RHS; // right-hand side
+    char Name; // save ND_VAR
     int Val; // value of 'ND_NUM' type
 };
 

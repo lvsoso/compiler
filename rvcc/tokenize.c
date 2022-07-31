@@ -136,6 +136,14 @@ Token *tokenize(char *P)
             continue;
         }
 
+        // parsing var
+        if ('a' <= *P && *P <= 'z') {
+        Cur->Next = newToken(TK_IDENT, P, P + 1);
+        Cur = Cur->Next;
+        ++P;
+        continue;
+        }
+        
         //  parsing op
         int PunctLen = readPunct(P);
         if (PunctLen) {
