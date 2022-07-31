@@ -55,12 +55,14 @@ typedef enum {
     ND_SUB, // -
     ND_MUL, // *
     ND_DIV, // /
-    ND_NUM, // interger
     ND_NEG, // 负号 -
     ND_EQ,  // ==
     ND_NE,  // !=
     ND_LT,  // <
     ND_LE,  // <=
+    ND_EXPR_STMT, // statement
+    ND_NUM, // interger
+
 } NodeKind;
 
 // AST binary tree's node
@@ -68,6 +70,7 @@ typedef struct Node Node;
 struct  Node
 {
     NodeKind Kind; // node type
+    Node *Next; // next node, next statment
     Node *LHS; // left-hand side
     Node *RHS; // right-hand side
     int Val; // value of 'ND_NUM' type

@@ -1,5 +1,8 @@
 #include "rvcc.h"
 
+// program = stmt*
+// stmt = exprStmt
+// exprStmt = expr ";"
 // expr = equality
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
@@ -8,6 +11,7 @@
 // unary = ("+" | "-") unary | primary
 // primary = "(" expr ")" | num
 static Node *expr(Token **Rest, Token *Tok);
+static Node *exprStmt(Token **Rest, Token *Tok);
 static Node *equality(Token **Rest, Token *Tok);
 static Node *relational(Token **Rest, Token *Tok);
 static Node *add(Token **Rest, Token *Tok);
@@ -44,7 +48,17 @@ static Node *newNum(int Val) {
     return Nd;
 }
 
+// stmt = exprStmt
+static Node *stmt(Token **Rest, Token *Tok) { 
+  return exprStmt(Rest, Tok); 
+}
 
+// exprStmt = expr ";"
+static Node *exprStmt(Token **Rest, Token *Tok) {
+  Node *Nd = newUnary(ND_EXPR_STMT, expr(&Tok, Tok));
+  *Rest = skip(Tok, ";");
+  return Nd;
+}
 
 // expr = equality
 static Node *expr(Token **Rest, Token *Tok) { 
@@ -198,8 +212,13 @@ static Node *primary(Token **Rest, Token *Tok) {
 
 // syntax parser entry function
 Node *parse(Token *Tok) {
-  Node *Nd = expr(&Tok, Tok);
-  if (Tok->Kind != TK_EOF)
-    errorTok(Tok, "extra token");
-  return Nd;
+  Node Head = {};
+  Node *Cur = &Head;
+
+    // stmt*
+  while (Tok->Kind != TK_EOF) {
+    Cur->Next = stmt(&Tok, Tok);
+    Cur = Cur->Next;
+  }
+  return Head.Next;
 }
