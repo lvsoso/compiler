@@ -1,9 +1,15 @@
+#include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+
+//
+// 标记符分析，词法分析
+//
 
 // Token Type
 typedef enum
@@ -146,7 +152,7 @@ static Token *tokenize()
         }
 
         //  parsing op
-        if (*P == '+' || *P == '-')
+        if (ispunct(*P))
         {
             // op's len == 1
             Cur->Next = newToken(TK_PUNCT, P, P + 1);
@@ -165,6 +171,195 @@ static Token *tokenize()
     return Head.Next;
 }
 
+//
+// 生成AST（抽象语法树），语法解析
+//
+
+// AST Nnode
+typedef enum {
+    ND_ADD, // +
+    ND_SUB, // -
+    ND_MUL, // *
+    ND_DIV, // /
+    ND_NUM, // interger
+} NodeKind;
+
+// AST binary tree's node
+typedef struct Node Node;
+struct  Node
+{
+    NodeKind Kind; // node type
+    Node *LHS; // left-hand side
+    Node *RHS; // right-hand side
+    int Val; // value of 'ND_NUM' type
+};
+
+
+// new a node
+static Node *newNode(NodeKind Kind){
+    Node *Nd = calloc(1, sizeof(Node));
+    Nd->Kind = Kind;
+    return Nd;
+}
+
+// new a binary node
+static Node *newBinary(NodeKind Kind, Node *LHS, Node *RHS) {
+  Node *Nd = newNode(Kind);
+  Nd->LHS = LHS;
+  Nd->RHS = RHS;
+  return Nd;
+}
+
+//  new a number node
+static Node *newNum(int Val) {
+    Node *Nd = newNode(ND_NUM);
+    Nd->Val = Val;
+    return Nd;
+}
+
+// expr = mul ("+" mul | "-" mul)*
+// mul = primary ("*" primary | "/" primary)*
+// primary = "(" expr ")" | num
+static Node *expr(Token **Rest, Token *Tok);
+static Node *mul(Token **Rest, Token *Tok);
+static Node *primary(Token **Rest, Token *Tok);
+
+// expr = mul ("+" mul | "-" mul)*
+static Node *expr(Token **Rest, Token *Tok) {
+  // mul
+  Node *Nd = mul(&Tok, Tok);
+
+   // ("+" mul | "-" mul)*
+  while (true) {
+    // "+" mul
+    if (equal(Tok, "+")) {
+      Nd = newBinary(ND_ADD, Nd, mul(&Tok, Tok->Next));
+      continue;
+    }
+
+    // "-" mul
+    if (equal(Tok, "-")) {
+      Nd = newBinary(ND_SUB, Nd, mul(&Tok, Tok->Next));
+      continue;
+    }
+
+    *Rest = Tok;
+    return Nd;
+  }
+}
+
+// 解析乘除
+// mul = primary ("*" primary | "/" primary)*
+static Node *mul(Token **Rest, Token *Tok) {
+  // primary
+  Node *Nd = primary(&Tok, Tok);
+
+  // ("*" primary | "/" primary)*
+  while (true) {
+    // "*" primary
+    if (equal(Tok, "*")) {
+      Nd = newBinary(ND_MUL, Nd, primary(&Tok, Tok->Next));
+      continue;
+    }
+
+    // "/" primary
+    if (equal(Tok, "/")) {
+      Nd = newBinary(ND_DIV, Nd, primary(&Tok, Tok->Next));
+      continue;
+    }
+
+    *Rest = Tok;
+    return Nd;
+  }
+}
+
+// 解析括号、数字
+// primary = "(" expr ")" | num
+static Node *primary(Token **Rest, Token *Tok) {
+  // "(" expr ")"
+  if (equal(Tok, "(")) {
+    Node *Nd = expr(&Tok, Tok->Next);
+    *Rest = skip(Tok, ")");
+    return Nd;
+  }
+
+  // num
+  if (Tok->Kind == TK_NUM) {
+    Node *Nd = newNum(Tok->Val);
+    *Rest = Tok->Next;
+    return Nd;
+  }
+
+  errorTok(Tok, "expected an expression");
+  return NULL;
+}
+
+//
+// 语义分析与代码生成
+//
+
+// 记录栈深度
+static int Depth;
+
+// 压栈，将结果临时压入栈中备用
+// sp为栈指针，栈反向向下增长，64位下，8个字节为一个单位，所以sp-8
+// 当前栈指针的地址就是sp，将a0的值压入栈
+// 不使用寄存器存储的原因是因为需要存储的值的数量是变化的。
+static void push(void) {
+  // sp  = sp - 8
+  printf("  addi sp, sp, -8\n");
+  //pos[sp+0]= a0
+  printf("  sd a0, 0(sp)\n");
+  Depth++;
+}
+
+// 弹栈，将sp指向的地址的值，弹出到a1
+static void pop(char *Reg) {
+    // reg = pos[sp+0]
+  printf("  ld %s, 0(sp)\n", Reg);
+  // sp = sp + 8
+  printf("  addi sp, sp, 8\n");
+  Depth--;
+}
+
+// 生成表达式
+static void genExpr(Node *Nd) {
+  // 加载数字到a0
+  if (Nd->Kind == ND_NUM) {
+    printf("  li a0, %d\n", Nd->Val);
+    return;
+  }
+
+  // 递归到最右节点
+  genExpr(Nd->RHS);
+  // 将结果压入栈
+  push();
+  // 递归到左节点
+  genExpr(Nd->LHS);
+  // 将结果弹栈到a1
+  pop("a1");
+
+  // 生成各个二叉树节点
+  switch (Nd->Kind) {
+  case ND_ADD: // + a0=a0+a1
+    printf("  add a0, a0, a1\n");
+    return;
+  case ND_SUB: // - a0=a0-a1
+    printf("  sub a0, a0, a1\n");
+    return;
+  case ND_MUL: // * a0=a0*a1
+    printf("  mul a0, a0, a1\n");
+    return;
+  case ND_DIV: // / a0=a0/a1
+    printf("  div a0, a0, a1\n");
+    return;
+  default:
+    break;
+  }
+
+  error("invalid expression");
+}
+
 int main(int Argc, char **Argv)
 {
     if (Argc != 2)
@@ -172,41 +367,27 @@ int main(int Argc, char **Argv)
         error("%s: invalid number of arguments", Argv[0]);
     }
 
-    // parsing argv
+    // parsing argv, generate token stream
   CurrentInput = Argv[1];
   Token *Tok = tokenize();
+
+    //parse token stream
+  Node *Node = expr(&Tok, Tok);
+
+  if (Tok->Kind != TK_EOF)
+    errorTok(Tok, "extra token");
 
     printf("  .globl main\n");
     printf("main:\n");
 
-    // 传入第一个number
-    // strtol(target, remainder， base)
-    printf("  li a0, %d\n", getNumber(Tok));
-    Tok = Tok->Next;
-
-    // 解析
-    while (Tok->Kind != TK_EOF)
-    {
-        if (equal(Tok, "+"))
-        {
-            Tok = Tok->Next;
-            printf("  addi a0, a0, %d\n", getNumber(Tok));
-            Tok = Tok->Next;
-            continue;
-        }
-
-        if (equal(Tok, "-"))
-        {
-            Tok = skip(Tok, "-");
-            printf("  addi a0, a0, -%d\n", getNumber(Tok));
-            Tok = Tok->Next;
-            continue;
-        }
-
-        error("unexpected character: '%c'\n", Tok->Loc);
-    }
+ // traversing  ast tree and generate asm
+  genExpr(Node);
 
     // jalr x0, x1, 0
     printf("  ret\n");
+
+    // 如果栈未清空则报错
+    assert(Depth == 0);
+
     return 0;
 }
