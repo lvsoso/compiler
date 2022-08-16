@@ -27,9 +27,8 @@ void error(char *Fmt, ...)
     exit(1);
 }
 
-
 // ouput the position and exit.
-static void verrorAt(char*Loc, char *Fmt, va_list VA)
+static void verrorAt(char *Loc, char *Fmt, va_list VA)
 {
     fprintf(stderr, "%s\n", CurrentInput);
 
@@ -42,7 +41,6 @@ static void verrorAt(char*Loc, char *Fmt, va_list VA)
     fprintf(stderr, "\n");
     va_end(VA);
     exit(1);
-
 }
 
 // 字符解析出错
@@ -54,10 +52,11 @@ void errorAt(char *Loc, char *Fmt, ...)
 }
 
 // Tok解析出错
-void errorTok(Token *Tok, char *Fmt, ...) {
-  va_list VA;
-  va_start(VA, Fmt);
-  verrorAt(Tok->Loc, Fmt, VA);
+void errorTok(Token *Tok, char *Fmt, ...)
+{
+    va_list VA;
+    va_start(VA, Fmt);
+    verrorAt(Tok->Loc, Fmt, VA);
 }
 
 // judge Tok's value if equal to Str
@@ -85,7 +84,7 @@ static int getNumber(Token *Tok)
 // new Token
 static Token *newToken(TokenKind Kind, char *Start, char *End)
 {
-    Token * Tok = calloc(1, sizeof(Token));
+    Token *Tok = calloc(1, sizeof(Token));
     Tok->Kind = Kind;
     Tok->Loc = Start;
     Tok->Len = End - Start;
@@ -93,19 +92,32 @@ static Token *newToken(TokenKind Kind, char *Start, char *End)
 }
 
 // judge a string start with sub-string
-static bool startsWith(char *Str, char *SubStr){
-  return strncmp(Str, SubStr, strlen(SubStr)) == 0;
+static bool startsWith(char *Str, char *SubStr)
+{
+    return strncmp(Str, SubStr, strlen(SubStr)) == 0;
 }
 
-// read operator
-static int readPunct(char *Ptr) {
-  // 2 bytes
-  if (startsWith(Ptr, "==") || startsWith(Ptr, "!=") || startsWith(Ptr, "<=") || startsWith(Ptr, ">=")){
-    return 2;
-  }
+// validate the first character of identifier
+// [a-zA-Z_]
+static bool isIdent1(char C)
+{
+    return ('a' <= C && C <= 'z') || ('A' <= C && C <= 'Z') || C == '_';
+}
+// validate  the other character of identifier
+// [a-zA-Z0-9_]
+static bool isIdent2(char C) { return isIdent1(C) || ('0' <= C && C <= '9'); }
 
-  // 1 byte
-  return ispunct(*Ptr) ? 1 : 0;
+// read operator
+static int readPunct(char *Ptr)
+{
+    // 2 bytes
+    if (startsWith(Ptr, "==") || startsWith(Ptr, "!=") || startsWith(Ptr, "<=") || startsWith(Ptr, ">="))
+    {
+        return 2;
+    }
+
+    // 1 byte
+    return ispunct(*Ptr) ? 1 : 0;
 }
 
 // 终结符解析
@@ -137,21 +149,28 @@ Token *tokenize(char *P)
         }
 
         // parsing var
-        if ('a' <= *P && *P <= 'z') {
-        Cur->Next = newToken(TK_IDENT, P, P + 1);
-        Cur = Cur->Next;
-        ++P;
-        continue;
+        // [a-zA-Z_][a-zA-Z0-9_]*
+        if (isIdent1(*P))
+        {
+            char *Start = P;
+            do
+            {
+                ++P;
+            } while (isIdent2(*P));
+            Cur->Next = newToken(TK_IDENT, Start, P);
+            Cur = Cur->Next;
+            continue;
         }
-        
+
         //  parsing op
         int PunctLen = readPunct(P);
-        if (PunctLen) {
-          Cur->Next = newToken(TK_PUNCT, P, P + PunctLen);
-          Cur = Cur->Next;
-          // move the pointer
-          P += PunctLen;
-          continue;
+        if (PunctLen)
+        {
+            Cur->Next = newToken(TK_PUNCT, P, P + PunctLen);
+            Cur = Cur->Next;
+            // move the pointer
+            P += PunctLen;
+            continue;
         }
 
         // unknown character

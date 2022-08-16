@@ -1,3 +1,9 @@
+// 使用POSIX.1标准
+// 使用了strndup函数
+//  截断字符串
+#define _POSIX_C_SOURCE 200809L
+
+
 #include <assert.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -69,23 +75,41 @@ typedef enum {
 
 // AST binary tree's node
 typedef struct Node Node;
+
+typedef struct Obj Obj;
+
+struct Obj {
+    Obj *Next; // next obj
+    char *Name ; // name of variable
+    int Offset ; //  offset of fp
+};
+
+// function
+typedef struct Function Function;
+
+struct Function {
+    Node *Body; // function body
+    Obj *Locals; // local variable
+    int StackSize; // stack size
+};
+
 struct  Node
 {
     NodeKind Kind; // node type
     Node *Next; // next node, next statment
     Node *LHS; // left-hand side
     Node *RHS; // right-hand side
-    char Name; // save ND_VAR
+    Obj *Var;      // save ND_VAR type variable
     int Val; // value of 'ND_NUM' type
 };
 
 
 // 语法解析入口函数
-Node *parse(Token *Tok);
+Function *parse(Token *Tok);
 
 //
 // 语义分析与代码生成
 //
 
 // 代码生成入口函数
-void codegen(Node *Nd);
+void codegen(Function *Prog);

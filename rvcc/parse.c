@@ -1,5 +1,9 @@
 #include "rvcc.h"
 
+// save local variables
+Obj *Locals;
+
+
 // program = stmt*
 // stmt = exprStmt
 // exprStmt = expr ";"
@@ -20,6 +24,17 @@ static Node *add(Token **Rest, Token *Tok);
 static Node *mul(Token **Rest, Token *Tok);
 static Node *unary(Token **Rest, Token *Tok);
 static Node *primary(Token **Rest, Token *Tok);
+
+// find local variable by name
+static Obj *findVar(Token *Tok) {
+  // for-loop locals variable
+  for (Obj *Var = Locals; Var; Var = Var->Next)
+    // compare name
+    if (strlen(Var->Name) == Tok->Len &&
+        !strncmp(Tok->Loc, Var->Name, Tok->Len))
+      return Var;
+  return NULL;
+}
 
 // new a node
 static Node *newNode(NodeKind Kind)
@@ -55,11 +70,22 @@ static Node *newNum(int Val)
 }
 
 // new variable
-static Node *newVarNode(char Name)
+static Node *newVarNode(Obj *Var)
 {
   Node *Nd = newNode(ND_VAR);
-  Nd->Name = Name;
+  Nd->Var = Var;
   return Nd;
+}
+
+// insert new variable to 'locals'
+static Obj *newLVar(char *Name)
+{
+  Obj *Var = calloc(1, sizeof(Obj));
+  Var->Name = Name;
+  // the new one be the head
+  Var->Next = Locals;
+  Locals = Var;
+  return Var;
 }
 
 // stmt = exprStmt
@@ -251,10 +277,16 @@ static Node *primary(Token **Rest, Token *Tok)
   }
 
   // ident
-  if (Tok->Kind == TK_IDENT) {
-    Node *Nd = newVarNode(*Tok->Loc);
+  if (Tok->Kind == TK_IDENT) 
+  {
+    // find variable from locals
+    Obj *Var = findVar(Tok);
+    // if no exist before, create one
+    if (!Var)
+      // strndup copy n 's  characters
+      Var = newLVar(strndup(Tok->Loc, Tok->Len));
     *Rest = Tok->Next;
-    return Nd;
+    return newVarNode(Var);
   }
   
   // num
@@ -270,7 +302,7 @@ static Node *primary(Token **Rest, Token *Tok)
 }
 
 // syntax parser entry function
-Node *parse(Token *Tok)
+Function *parse(Token *Tok)
 {
   Node Head = {};
   Node *Cur = &Head;
@@ -281,5 +313,10 @@ Node *parse(Token *Tok)
     Cur->Next = stmt(&Tok, Tok);
     Cur = Cur->Next;
   }
-  return Head.Next;
+  
+
+  Function *Prog= calloc(1, sizeof(Function));
+  Prog->Body = Head.Next; // save statements ast
+  Prog->Locals = Locals; // save local variable
+  return Prog;
 }

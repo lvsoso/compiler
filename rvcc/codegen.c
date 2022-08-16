@@ -26,14 +26,20 @@ static void pop(char *Reg)
   Depth--;
 }
 
+// align N times to the 'Align'
+static int alignTo(int N, int Align)
+{
+  // (0,Align]
+  return (N + Align - 1) / Align * Align;
+}
+
 // get variables address
 static void genAddr(Node *Nd)
 {
   if (Nd->Kind == ND_VAR)
   {
-    // *8 each variable need 8 bytes
-    int Offset = (Nd->Name - 'a' + 1) * 8;
-    printf("  addi a0, fp, %d\n", -Offset);
+    // 'offset' is compare with 'fp'
+    printf("  addi a0, fp, %d\n", Nd->Var->Offset);
     return;
   }
 
@@ -142,22 +148,38 @@ static void genStmt(Node *Nd)
   error("invalid statement");
 }
 
-// code gen entry function
-void codegen(Node *Nd)
+// calculate the variable offset from the 'Locals'
+static void assignLVarOffsets(Function *Prog)
 {
+  int Offset = 0;
+  // for-loop local variables
+  for (Obj *Var = Prog->Locals; Var; Var = Var->Next)
+  {
+
+    // assign 8 bytes to each variable
+    Offset += 8;
+
+    // set the offset for each variable, is the addr in the stack.
+    Var->Offset = -Offset;
+  }
+  // align the stack to 16 bytes
+  Prog->StackSize = alignTo(Offset, 16);
+}
+
+// code gen entry function
+void codegen(Function *Prog)
+{
+  assignLVarOffsets(Prog);
   printf("  .globl main\n");
   printf("main:\n");
 
   // 栈布局
   //-------------------------------// sp
   //              fp                  fp = sp-8
-  //-------------------------------// fp
-  //              'a'                 fp-8
-  //              'b'                 fp-16
-  //              ...
-  //              'z'                 fp-208
-  //-------------------------------// sp=sp-8-208
-  //           表达式计算
+  //-------------------------------// fp = sp-8
+  //           local  variables
+  //-------------------------------// sp = sp-8-StackSize
+  //           expressions calculate
   //-------------------------------//
 
   // Prologue
@@ -170,7 +192,7 @@ void codegen(Node *Nd)
   // 26个字母*8字节=208字节，栈腾出208字节的空间
   printf("  addi sp, sp, -208\n");
 
-  for (Node *N = Nd; N; N = N->Next)
+  for (Node *N = Prog->Body; N; N = N->Next)
   {
     genStmt(N);
     assert(Depth == 0);

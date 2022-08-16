@@ -11,9 +11,9 @@ int main(int Argc, char **Argv)
   Token *Tok = tokenize(Argv[1]);
 
   // parse token stream
-  Node *Nd = parse(Tok);
+  Function *Prog = parse(Tok);
 
-  codegen(Nd);
+  codegen(Prog);
 
   return 0;
 }

@@ -84,4 +84,9 @@ assert 8 'a=3; z=5; a+z;'
 assert 6 'a=b=3; a+b;'
 assert 5 'a=3;b=4;a=1;a+b;'
 
+# [11] 支持多字母变量
+assert 6 'bar= 6; bar;'
+assert 87 'lvsoso1 = 89; soso = 2; lvsoso1 - soso;'
+
+
 echo OK
