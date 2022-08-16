@@ -140,14 +140,23 @@ static void genExpr(Node *Nd)
 
 static void genStmt(Node *Nd)
 {
-  if (Nd->Kind == ND_EXPR_STMT)
+  switch (Nd->Kind)
   {
+  // gen 'return' statement
+  case ND_RETURN:
+    genExpr(Nd->LHS);
+    // 无条件跳转语句， 跳转到.L.return段
+    // j offset是 jal x0, offset的别名指令
+    printf("  j .L.return\n");
+    return;
+  // 生成表达式语句
+  case ND_EXPR_STMT:
     genExpr(Nd->LHS);
     return;
+  default:
+    break;
   }
-  error("invalid statement");
 }
-
 // calculate the variable offset from the 'Locals'
 static void assignLVarOffsets(Function *Prog)
 {
@@ -199,6 +208,8 @@ void codegen(Function *Prog)
   }
 
   // Epilogue
+  // 输出return段标签
+  printf(".L.return:\n");
   // 将fp的值改写回sp
   printf("  mv sp, fp\n");
   // 将最早fp保存的值弹栈，恢复fp。

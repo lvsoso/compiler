@@ -5,7 +5,7 @@ Obj *Locals;
 
 
 // program = stmt*
-// stmt = exprStmt
+// stmt = "return" expr ";" | exprStmt
 // exprStmt = expr ";"
 // expr = assign
 // assign = equality ("=" assign)?
@@ -91,6 +91,14 @@ static Obj *newLVar(char *Name)
 // stmt = exprStmt
 static Node *stmt(Token **Rest, Token *Tok)
 {
+  // "return" expr ";"
+  if (equal(Tok, "return")) {
+    Node *Nd = newUnary(ND_RETURN, expr(&Tok, Tok->Next));
+    *Rest = skip(Tok, ";");
+    return Nd;
+  }
+
+  // exprStmt
   return exprStmt(Rest, Tok);
 }
 

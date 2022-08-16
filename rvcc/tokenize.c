@@ -120,6 +120,18 @@ static int readPunct(char *Ptr)
     return ispunct(*Ptr) ? 1 : 0;
 }
 
+// convert 'return' to keyword
+static void convertKeywords(Token *Tok)
+{
+    for (Token *T = Tok; T->Kind != TK_EOF; T = T->Next)
+    {
+        if (equal(T, "return"))
+        {
+            T->Kind = TK_KEYWORD;
+        }
+    }
+}
+
 // 终结符解析
 Token *tokenize(char *P)
 {
@@ -148,7 +160,7 @@ Token *tokenize(char *P)
             continue;
         }
 
-        // parsing var
+        // parsing var or keyword
         // [a-zA-Z_][a-zA-Z0-9_]*
         if (isIdent1(*P))
         {
@@ -179,6 +191,10 @@ Token *tokenize(char *P)
 
     // end of the parse
     Cur->Next = newToken(TK_EOF, P, P);
+
+    // mark all keyword token as KEYWORD
+    convertKeywords(Head.Next);
+
     // Head is empty
     return Head.Next;
 }

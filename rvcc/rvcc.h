@@ -24,6 +24,7 @@
 typedef enum
 {
     TK_IDENT, // ident, variable name or function name
+    TK_KEYWORD,  // keyword
     TK_PUNCT, // +, -
     TK_NUM,   // number
     TK_EOF,   // end
@@ -68,6 +69,7 @@ typedef enum {
     ND_LT,  // <
     ND_LE,  // <=
     ND_ASSIGN, // assign variable's value
+    ND_RETURN, // return
     ND_EXPR_STMT, // statement
     ND_NUM, // interger
     ND_VAR, // variable
