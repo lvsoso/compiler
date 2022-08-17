@@ -4,8 +4,9 @@
 Obj *Locals;
 
 
-// program = stmt*
-// stmt = "return" expr ";" | exprStmt
+// program = "{" compoundStmt
+// compoundStmt = stmt* "}"
+// stmt = "return" expr ";" | "{" compoundStmt | exprStmt
 // exprStmt = expr ";"
 // expr = assign
 // assign = equality ("=" assign)?
@@ -15,8 +16,9 @@ Obj *Locals;
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-") unary | primary
 // primary = "(" expr ")" | ident | num
-static Node *expr(Token **Rest, Token *Tok);
+static Node *compoundStmt(Token **Rest, Token *tok);
 static Node *exprStmt(Token **Rest, Token *Tok);
+static Node *expr(Token **Rest, Token *Tok);
 static Node *assign(Token **Rest, Token *Tok);
 static Node *equality(Token **Rest, Token *Tok);
 static Node *relational(Token **Rest, Token *Tok);
@@ -88,7 +90,7 @@ static Obj *newLVar(char *Name)
   return Var;
 }
 
-// stmt = exprStmt
+// stmt = "return" expr ";" | "{" compoundStmt | exprStmt
 static Node *stmt(Token **Rest, Token *Tok)
 {
   // "return" expr ";"
@@ -98,9 +100,34 @@ static Node *stmt(Token **Rest, Token *Tok)
     return Nd;
   }
 
+  // "{" compoundStmt
+  if (equal(Tok, "{"))
+    return compoundStmt(Rest, Tok->Next);
+
   // exprStmt
   return exprStmt(Rest, Tok);
 }
+
+// compoundStmt = stmt* "}"
+static Node *compoundStmt(Token **Rest, Token *Tok){
+
+  Node Head = {};
+  Node *Cur = &Head;
+
+  // stmt* "}"
+  while (!equal(Tok, "}")){
+    Cur -> Next = stmt(&Tok, Tok);
+    Cur = Cur->Next;
+  }
+
+
+  // save {} block in Node's Body;
+  Node *Nd = newNode(ND_BLOCK);
+  Nd->Body = Head.Next;
+  *Rest = Tok->Next;
+  return Nd;
+}
+
 
 // exprStmt = expr ";"
 static Node *exprStmt(Token **Rest, Token *Tok)
@@ -310,21 +337,14 @@ static Node *primary(Token **Rest, Token *Tok)
 }
 
 // syntax parser entry function
+// program = "{" compoundStmt
 Function *parse(Token *Tok)
 {
-  Node Head = {};
-  Node *Cur = &Head;
-
-  // stmt*
-  while (Tok->Kind != TK_EOF)
-  {
-    Cur->Next = stmt(&Tok, Tok);
-    Cur = Cur->Next;
-  }
-  
+   // "{"
+  Tok = skip(Tok, "{");
 
   Function *Prog= calloc(1, sizeof(Function));
-  Prog->Body = Head.Next; // save statements ast
+  Prog->Body = compoundStmt(&Tok, Tok);
   Prog->Locals = Locals; // save local variable
   return Prog;
 }

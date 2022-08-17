@@ -70,9 +70,11 @@ typedef enum {
     ND_LE,  // <=
     ND_ASSIGN, // assign variable's value
     ND_RETURN, // return
+    ND_BLOCK,     // { ... }，code block
     ND_EXPR_STMT, // statement
     ND_NUM, // interger
     ND_VAR, // variable
+    
 } NodeKind;
 
 // AST binary tree's node
@@ -101,6 +103,10 @@ struct  Node
     Node *Next; // next node, next statment
     Node *LHS; // left-hand side
     Node *RHS; // right-hand side
+
+    // code block
+    Node *Body;
+    
     Obj *Var;      // save ND_VAR type variable
     int Val; // value of 'ND_NUM' type
 };

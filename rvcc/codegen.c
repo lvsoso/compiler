@@ -142,6 +142,11 @@ static void genStmt(Node *Nd)
 {
   switch (Nd->Kind)
   {
+  //  gen '{}' code block and for-loop the statement link
+  case ND_BLOCK:
+    for (Node *N = Nd->Body; N; N = N->Next)
+      genStmt(N);
+    return;
   // gen 'return' statement
   case ND_RETURN:
     genExpr(Nd->LHS);
