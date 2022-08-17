@@ -120,12 +120,27 @@ static int readPunct(char *Ptr)
     return ispunct(*Ptr) ? 1 : 0;
 }
 
+// judge if the keyword
+static bool isKeyword(Token *Tok){
+    // keyword list
+    static char *KW[] = {"return", "if", "else"};
+
+    // for-loop the keyword list and check
+    for (int l = 0; l < sizeof(KW)/ sizeof(*KW); ++l) {
+        if(equal(Tok, KW[l]))
+        return true;
+    }
+
+    return false;
+}
+
+
 // convert 'return' to keyword
 static void convertKeywords(Token *Tok)
 {
     for (Token *T = Tok; T->Kind != TK_EOF; T = T->Next)
     {
-        if (equal(T, "return"))
+        if (isKeyword(T))
         {
             T->Kind = TK_KEYWORD;
         }

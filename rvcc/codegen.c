@@ -3,6 +3,12 @@
 // 记录栈深度
 static int Depth;
 
+//code sectionn count
+static int count(void) {
+  static int I = 1;
+  return I++;
+}
+
 // 压栈，将结果临时压入栈中备用
 // sp为栈指针，栈反向向下增长，64位下，8个字节为一个单位，所以sp-8
 // 当前栈指针的地址就是sp，将a0的值压入栈
@@ -142,6 +148,34 @@ static void genStmt(Node *Nd)
 {
   switch (Nd->Kind)
   {
+    // if statement
+  case ND_IF: {
+    // code section count
+    int C = count();
+
+    // gen condition expresion
+    genExpr(Nd->Cond);
+
+    // judge the result if equal to zero and jump to "else" if no equal
+    printf(" beqz a0, .L.else.%d\n", C);
+    
+    // gen the statement for match
+    genStmt(Nd->Then);
+
+    // jump to end block
+    printf("  j .L.end.%d\n", C);
+
+    //else block
+    printf(".L.else.%d:\n", C);
+
+    // gen the  statement for no-match
+    if (Nd->Els)
+      genStmt(Nd->Els);
+
+    // end of current if statement
+    printf(".L.end.%d:\n", C);
+  }
+
   //  gen '{}' code block and for-loop the statement link
   case ND_BLOCK:
     for (Node *N = Nd->Body; N; N = N->Next)
