@@ -97,4 +97,8 @@ assert 3 '{ 1; 2; return 3; }'
 # [13] 支持{...}
 assert 3 '{ {1; {2;} return 3;} }'
 
+# [14] 支持空语句
+assert 5 '{ ;;a = 1; return 5; }'
+assert 1 '{ ;;a = 1; return a; }'
+
 echo OK

@@ -7,7 +7,7 @@ Obj *Locals;
 // program = "{" compoundStmt
 // compoundStmt = stmt* "}"
 // stmt = "return" expr ";" | "{" compoundStmt | exprStmt
-// exprStmt = expr ";"
+// exprStmt = expr? ";"
 // expr = assign
 // assign = equality ("=" assign)?
 // equality = relational ("==" relational | "!=" relational)*
@@ -129,9 +129,16 @@ static Node *compoundStmt(Token **Rest, Token *Tok){
 }
 
 
-// exprStmt = expr ";"
+// exprStmt = expr? ";"
 static Node *exprStmt(Token **Rest, Token *Tok)
 {
+  // ";"
+  if (equal(Tok, ";")){
+    *Rest = Tok->Next;
+    return newNode(ND_BLOCK);
+  }
+
+  // expr ";"
   Node *Nd = newUnary(ND_EXPR_STMT, expr(&Tok, Tok));
   *Rest = skip(Tok, ";");
   return Nd;
