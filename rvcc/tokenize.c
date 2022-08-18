@@ -123,7 +123,7 @@ static int readPunct(char *Ptr)
 // judge if the keyword
 static bool isKeyword(Token *Tok){
     // keyword list
-    static char *KW[] = {"return", "if", "else"};
+    static char *KW[] = {"return", "if", "else", "for"};
 
     // for-loop the keyword list and check
     for (int l = 0; l < sizeof(KW)/ sizeof(*KW); ++l) {

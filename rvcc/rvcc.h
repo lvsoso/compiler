@@ -70,7 +70,8 @@ typedef enum {
     ND_LE,  // <=
     ND_ASSIGN, // assign variable's value
     ND_RETURN, // return
-    ND_IF,        // "if"
+    ND_IF,        // "if
+    ND_FOR,  // for"
     ND_BLOCK,     // { ... }，code block
     ND_EXPR_STMT, // statement
     ND_NUM, // interger
@@ -101,14 +102,19 @@ struct Function {
 struct  Node
 {
     NodeKind Kind; // node type
-    Node *Next; // next node, next statment
+    Node *Next; // next node, next statement
     Node *LHS; // left-hand side
     Node *RHS; // right-hand side
 
-    // "if"statment
+    // "if"statement
     Node *Cond; // condition
     Node *Then; // match
     Node *Els;  // no-match
+
+
+    // for statement
+    Node *Init;// init statement
+    Node *Inc;  // increase statement
 
     // code block
     Node *Body;

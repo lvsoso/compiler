@@ -3,8 +3,9 @@
 // 记录栈深度
 static int Depth;
 
-//code sectionn count
-static int count(void) {
+// code sectionn count
+static int count(void)
+{
   static int I = 1;
   return I++;
 }
@@ -149,7 +150,8 @@ static void genStmt(Node *Nd)
   switch (Nd->Kind)
   {
     // if statement
-  case ND_IF: {
+  case ND_IF:
+  {
     // code section count
     int C = count();
 
@@ -158,14 +160,14 @@ static void genStmt(Node *Nd)
 
     // judge the result if equal to zero and jump to "else" if no equal
     printf(" beqz a0, .L.else.%d\n", C);
-    
+
     // gen the statement for match
     genStmt(Nd->Then);
 
     // jump to end block
     printf("  j .L.end.%d\n", C);
 
-    //else block
+    // else block
     printf(".L.else.%d:\n", C);
 
     // gen the  statement for no-match
@@ -174,8 +176,48 @@ static void genStmt(Node *Nd)
 
     // end of current if statement
     printf(".L.end.%d:\n", C);
+    
+    // fix: commit 15
+    return;
   }
 
+  // gen for-loop statement
+  case ND_FOR:
+  {
+    // code section count
+    int C = count();
+
+    // generate init statement
+    genStmt(Nd->Init);
+
+    // head of loop start
+    printf(".L.begin.%d:\n", C);
+
+    // handle for-loop condition
+    if (Nd->Cond)
+    {
+      // generate condition loop statement
+      genExpr(Nd->Cond);
+
+      // if result match zero, will jump to end
+      printf("  beqz a0, .L.end.%d\n", C);
+    }
+
+    // handle body
+    genStmt(Nd->Then);
+    // handle increase
+    if (Nd->Inc)
+      genExpr(Nd->Inc);
+
+    // jump to begin for next time  loop
+    printf("  j .L.begin.%d\n", C);
+
+    // end of for-loop
+    printf(".L.end.%d:\n", C);
+
+    return;
+  }
+  
   //  gen '{}' code block and for-loop the statement link
   case ND_BLOCK:
     for (Node *N = Nd->Body; N; N = N->Next)
