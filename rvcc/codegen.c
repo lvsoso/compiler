@@ -54,7 +54,7 @@ static void genAddr(Node *Nd)
     return;
   }
 
-  error("not an lvalue");
+  errorTok(Nd->Tok, "not an lvalue");
 }
 
 // 生成表达式
@@ -158,7 +158,7 @@ static void genExpr(Node *Nd)
     break;
   }
 
-  error("invalid expression");
+  errorTok(Nd->Tok, "invalid expression");
 }
 
 static void genStmt(Node *Nd)
@@ -278,6 +278,8 @@ static void genStmt(Node *Nd)
   default:
     break;
   }
+
+  errorTok(Nd->Tok, "invalid statement");
 }
 // calculate the variable offset from the 'Locals'
 static void assignLVarOffsets(Function *Prog)

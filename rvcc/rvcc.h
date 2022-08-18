@@ -103,6 +103,9 @@ struct  Node
 {
     NodeKind Kind; // node type
     Node *Next; // next node, next statement
+
+    Token *Tok;    // node' s token
+
     Node *LHS; // left-hand side
     Node *RHS; // right-hand side
 
