@@ -176,19 +176,22 @@ static void genStmt(Node *Nd)
 
     // end of current if statement
     printf(".L.end.%d:\n", C);
-    
+
     // fix: commit 15
     return;
   }
 
-  // gen for-loop statement
+  // gen for-loop or while statement
   case ND_FOR:
   {
     // code section count
     int C = count();
 
-    // generate init statement
-    genStmt(Nd->Init);
+    if (Nd->Init)
+    {
+      // generate init statement
+      genStmt(Nd->Init);
+    }
 
     // head of loop start
     printf(".L.begin.%d:\n", C);
@@ -217,7 +220,7 @@ static void genStmt(Node *Nd)
 
     return;
   }
-  
+
   //  gen '{}' code block and for-loop the statement link
   case ND_BLOCK:
     for (Node *N = Nd->Body; N; N = N->Next)

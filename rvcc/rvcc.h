@@ -71,7 +71,7 @@ typedef enum {
     ND_ASSIGN, // assign variable's value
     ND_RETURN, // return
     ND_IF,        // "if
-    ND_FOR,  // for"
+    ND_FOR,  // "for" or "while"
     ND_BLOCK,     // { ... }，code block
     ND_EXPR_STMT, // statement
     ND_NUM, // interger

@@ -3,12 +3,12 @@
 // save local variables
 Obj *Locals;
 
-
 // program = "{" compoundStmt
 // compoundStmt = stmt* "}"
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
+//        | "while" "(" expr ")" stmt
 //        | "{" compoundStmt
 //        | exprStmt
 // exprStmt = expr? ";"
@@ -32,7 +32,8 @@ static Node *unary(Token **Rest, Token *Tok);
 static Node *primary(Token **Rest, Token *Tok);
 
 // find local variable by name
-static Obj *findVar(Token *Tok) {
+static Obj *findVar(Token *Tok)
+{
   // for-loop locals variable
   for (Obj *Var = Locals; Var; Var = Var->Next)
     // compare name
@@ -97,19 +98,22 @@ static Obj *newLVar(char *Name)
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
+//        | "while" "(" expr ")" stmt
 //        | "{" compoundStmt
 //        | exprStmt
 static Node *stmt(Token **Rest, Token *Tok)
 {
   // "return" expr ";"
-  if (equal(Tok, "return")) {
+  if (equal(Tok, "return"))
+  {
     Node *Nd = newUnary(ND_RETURN, expr(&Tok, Tok->Next));
     *Rest = skip(Tok, ";");
     return Nd;
   }
 
   // "if" "(" expr ")" stmt ("else" stmt)?
-  if (equal(Tok, "if")) {
+  if (equal(Tok, "if"))
+  {
     Node *Nd = newNode(ND_IF);
     // "(" expr ")"，condition
     Tok = skip(Tok->Next, "(");
@@ -125,7 +129,8 @@ static Node *stmt(Token **Rest, Token *Tok)
   }
 
   // "for" "(" exprStmt expr? ";" expr? ")" stmt
-  if (equal(Tok, "for")) {
+  if (equal(Tok, "for"))
+  {
     Node *Nd = newNode(ND_FOR);
     // "("
     Tok = skip(Tok->Next, "(");
@@ -150,6 +155,20 @@ static Node *stmt(Token **Rest, Token *Tok)
     return Nd;
   }
 
+  // "while" "(" expr ")" stmt
+  if (equal(Tok, "while"))
+  {
+    Node *Nd = newNode(ND_FOR);
+    // "("
+    Tok = skip(Tok->Next, "(");
+    // expr
+    Nd->Cond = expr(&Tok, Tok);
+    // ")"
+    Tok = skip(Tok, ")");
+    // stmt
+    Nd->Then = stmt(Rest, Tok);
+    return Nd;
+  }
 
   // "{" compoundStmt
   if (equal(Tok, "{"))
@@ -160,17 +179,18 @@ static Node *stmt(Token **Rest, Token *Tok)
 }
 
 // compoundStmt = stmt* "}"
-static Node *compoundStmt(Token **Rest, Token *Tok){
+static Node *compoundStmt(Token **Rest, Token *Tok)
+{
 
   Node Head = {};
   Node *Cur = &Head;
 
   // stmt* "}"
-  while (!equal(Tok, "}")){
-    Cur -> Next = stmt(&Tok, Tok);
+  while (!equal(Tok, "}"))
+  {
+    Cur->Next = stmt(&Tok, Tok);
     Cur = Cur->Next;
   }
-
 
   // save {} block in Node's Body;
   Node *Nd = newNode(ND_BLOCK);
@@ -179,12 +199,12 @@ static Node *compoundStmt(Token **Rest, Token *Tok){
   return Nd;
 }
 
-
 // exprStmt = expr? ";"
 static Node *exprStmt(Token **Rest, Token *Tok)
 {
   // ";"
-  if (equal(Tok, ";")){
+  if (equal(Tok, ";"))
+  {
     *Rest = Tok->Next;
     return newNode(ND_BLOCK);
   }
@@ -370,7 +390,7 @@ static Node *primary(Token **Rest, Token *Tok)
   }
 
   // ident
-  if (Tok->Kind == TK_IDENT) 
+  if (Tok->Kind == TK_IDENT)
   {
     // find variable from locals
     Obj *Var = findVar(Tok);
@@ -381,7 +401,7 @@ static Node *primary(Token **Rest, Token *Tok)
     *Rest = Tok->Next;
     return newVarNode(Var);
   }
-  
+
   // num
   if (Tok->Kind == TK_NUM)
   {
@@ -398,10 +418,10 @@ static Node *primary(Token **Rest, Token *Tok)
 // program = "{" compoundStmt
 Function *parse(Token *Tok)
 {
-   // "{"
+  // "{"
   Tok = skip(Tok, "{");
 
-  Function *Prog= calloc(1, sizeof(Function));
+  Function *Prog = calloc(1, sizeof(Function));
   Prog->Body = compoundStmt(&Tok, Tok);
   Prog->Locals = Locals; // save local variable
   return Prog;
