@@ -6,6 +6,7 @@ add_executable(rvcc
   main.c
   tokenize.c
   parse.c
+  type.c
   codegen.c
 )
 

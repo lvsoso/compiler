@@ -121,4 +121,9 @@ assert 3 '{x=3; return *&x;}'
 assert 3 '{ x=3; y=&x; z=&y; return **z; }'
 assert 5 '{ x=3; y=&x; *y=5; return x; }' 
 
+# [21]  支持指针的算术运算
+assert 5 '{ x=3; y=5; return *(&x+8); }' # 指针加
+assert 3 '{ x=3; y=5; return *(&y-8); }' # 指针减
+assert 7 '{ x=3; y=5; *(&x+8)=7; return y; }'
+assert 7 '{ x=3; y=5; *(&y-8)=7; return x; }'
 echo OK

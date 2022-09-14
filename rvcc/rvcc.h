@@ -81,6 +81,8 @@ typedef enum {
 } NodeKind;
 
 // AST binary tree's node
+
+typedef struct Type Type;
 typedef struct Node Node;
 
 typedef struct Obj Obj;
@@ -107,6 +109,8 @@ struct  Node
 
     Token *Tok;    // node' s token
 
+    Type *Ty;  // node's type
+
     Node *LHS; // left-hand side
     Node *RHS; // right-hand side
 
@@ -130,6 +134,26 @@ struct  Node
 
 // 语法解析入口函数
 Function *parse(Token *Tok);
+
+// Types System
+
+// types
+typedef enum {
+    TY_INT, // int
+    TY_PTR, // pointer
+} TypeKind;
+
+struct Type {
+    TypeKind Kind; // kind
+    Type *Base; // pointed type
+};
+
+extern Type *TyInt;
+
+// judge the 'type' is integer
+bool isInteger(Type *TY);
+// add type to each node under the Node;
+void addType(Node *Nd);
 
 //
 // 语义分析与代码生成

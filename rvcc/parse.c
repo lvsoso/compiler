@@ -21,6 +21,7 @@ Obj *Locals;
 // unary = ("+" | "-" | "*" | "&") unary | primary
 // primary = "(" expr ")" | ident | num
 static Node *compoundStmt(Token **Rest, Token *tok);
+static Node *stmt(Token **Rest, Token *Tok);
 static Node *exprStmt(Token **Rest, Token *Tok);
 static Node *expr(Token **Rest, Token *Tok);
 static Node *assign(Token **Rest, Token *Tok);
@@ -192,6 +193,8 @@ static Node *compoundStmt(Token **Rest, Token *Tok)
   {
     Cur->Next = stmt(&Tok, Tok);
     Cur = Cur->Next;
+
+    addType(Cur);
   }
 
   // save {} block in Node's Body;
@@ -312,6 +315,70 @@ static Node *relational(Token **Rest, Token *Tok)
     return Nd;
   }
 }
+
+// handle `add`
+static Node *newAdd(Node *LHS, Node *RHS, Token *Tok){
+  addType(LHS);
+  addType(RHS);
+
+  // num + num
+  if (isInteger(LHS->Ty) && isInteger(RHS->Ty)){
+    return newBinary(ND_ADD, LHS, RHS, Tok);
+  }
+
+  // could not handle pointer + pointer
+    if (LHS->Ty->Base && RHS->Ty->Base){
+      errorTok(Tok, "invalid operands");
+    }
+
+  // 前面已经排除了两个指针的情况
+  // 如果第一个表达式成立，则进行互换 num+ptr -> ptr + num
+      if (!LHS->Ty->Base && RHS->Ty->Base) {
+    Node *Tmp = LHS;
+    LHS = RHS;
+    RHS = Tmp;
+  }
+    
+    // ptr + 1
+    // 1 ： space of one element
+    // need x 8
+  RHS = newBinary(ND_MUL, RHS, newNum(8, Tok), Tok);
+  return newBinary(ND_ADD, LHS, RHS, Tok);
+}
+
+// handle  `sub`
+static Node *newSub(Node *LHS, Node *RHS, Token *Tok) {
+
+  addType(LHS);
+  addType(RHS);
+
+  // num - num
+  if (isInteger(LHS->Ty) && isInteger(RHS->Ty)){
+    return newBinary(ND_SUB, LHS, RHS, Tok);
+  }
+
+  // ptr - num
+  if (LHS->Ty->Base && isInteger(RHS->Ty)) {
+    RHS = newBinary(ND_MUL, RHS, newNum(8, Tok), Tok);
+    addType(RHS);
+    Node *Nd = newBinary(ND_SUB, LHS, RHS, Tok);
+  
+   //node type is pointer
+    Nd->Ty = LHS->Ty;
+    return Nd;
+  }
+
+  // ptr - ptr，return the num of element between two pointer
+  if (LHS->Ty->Base && RHS->Ty->Base) {
+    Node *Nd = newBinary(ND_SUB, LHS, RHS, Tok);
+    Nd->Ty = TyInt;
+    return newBinary(ND_DIV, Nd, newNum(8, Tok), Tok);
+  }
+
+  errorTok(Tok, "invalid operands");
+  return NULL;
+}
+
 // add = mul ("+" mul | "-" mul)*
 static Node *add(Token **Rest, Token *Tok)
 {
@@ -326,14 +393,14 @@ static Node *add(Token **Rest, Token *Tok)
     // "+" mul
     if (equal(Tok, "+"))
     {
-      Nd = newBinary(ND_ADD, Nd, mul(&Tok, Tok->Next), Start);
+      Nd = newAdd(Nd, mul(&Tok, Tok->Next), Start);
       continue;
     }
 
     // "-" mul
     if (equal(Tok, "-"))
     {
-      Nd = newBinary(ND_SUB, Nd, mul(&Tok, Tok->Next), Start);
+      Nd = newSub(Nd, mul(&Tok, Tok->Next), Start);
       continue;
     }
 
