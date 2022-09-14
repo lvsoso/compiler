@@ -76,7 +76,8 @@ typedef enum {
     ND_EXPR_STMT, // statement
     ND_NUM, // interger
     ND_VAR, // variable
-    
+    ND_ADDR,  // get address (&)
+    ND_DEREF,  // dereference (*)
 } NodeKind;
 
 // AST binary tree's node
