@@ -76,6 +76,7 @@ typedef enum {
     ND_IF,        // "if
     ND_FOR,  // "for" or "while"
     ND_BLOCK,     // { ... }，code block
+    ND_FUNCALL,   // 函数调用
     ND_EXPR_STMT, // statement
     ND_NUM, // interger
     ND_VAR, // variable
@@ -131,6 +132,9 @@ struct  Node
     // code block
     Node *Body;
     
+    // 函数调用
+    char *FuncName; // 函数名
+
     Obj *Var;      // save ND_VAR type variable
     int Val; // value of 'ND_NUM' type
 };

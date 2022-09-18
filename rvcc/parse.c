@@ -23,7 +23,8 @@ Obj *Locals;
 // add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "*" | "&") unary | primary
-// primary = "(" expr ")" | ident | num
+// primary = "(" expr ")" | ident args? | num
+// ars = "("")"
 static Node *compoundStmt(Token **Rest, Token *tok);
 static Node *declaration(Token **Rest, Token *Tok);
 static Node *stmt(Token **Rest, Token *Tok);
@@ -564,7 +565,8 @@ static Node *unary(Token **Rest, Token *Tok)
 }
 
 // 解析括号、数字
-// primary = "(" expr ")" | ident｜num
+// primary = "(" expr ")" | ident args?｜num
+// args = "(" ")"
 static Node *primary(Token **Rest, Token *Tok)
 {
   // "(" expr ")"
@@ -575,9 +577,20 @@ static Node *primary(Token **Rest, Token *Tok)
     return Nd;
   }
 
-  // ident
+  // ident args?
   if (Tok->Kind == TK_IDENT)
   {
+    // function call
+    // args =  "("")"
+    if (equal(Tok->Next, "(")){
+      Node *Nd = newNode(ND_FUNCALL, Tok);
+      // ident
+      Nd->FuncName = strndup(Tok->Loc, Tok->Len);
+      *Rest = skip(Tok->Next->Next, ")");
+      return Nd;
+    }
+
+    // ident
     // find variable from locals
     Obj *Var = findVar(Tok);
     // if no exist before, create one

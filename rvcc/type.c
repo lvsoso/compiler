@@ -51,6 +51,7 @@ void addType(Node *Nd)
     case ND_LT:
     case ND_LE:
     case ND_NUM:
+    case ND_FUNCALL:
         Nd->Ty = TyInt;
         return;
     // set variable's type as  Node'type

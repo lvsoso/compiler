@@ -7,13 +7,21 @@ LLVM_BIN=$HOME/RISCV/bin/llvm/bin/
 QEMU_BIN=$HOME/RISCV/bin/qemu/bin/
 PATH=$PATH:$RISCV:$RISCV_BIN:$RISCV_ELF:$LLVM_BIN:$QEMU_BIN
 
+
+# 将下列代码编译为tmp2.o，"-xc"强制以c语言进行编译
+# cat <<EOF | clang -xc -c -o tmp2.o -
+cat <<EOF | $RISCV/bin/riscv64-unknown-elf-gcc -xc -c -o tmp2.o -
+int ret3() { return 3; }
+int ret5() { return 5; }
+EOF
+
 assert(){
     expected="$1"
     input="$2"
 
     ./rvcc "$input" > tmp.s || exit
     # clang-12 -o tmp tmp.s
-    riscv64-unknown-elf-gcc -static -o tmp tmp.s
+    riscv64-unknown-elf-gcc -static -o tmp tmp.s tmp2.o
     
     # ./tmp
     # qemu-riscv64 -L $RISCV/sysroot ./tmp
@@ -130,5 +138,10 @@ assert 7 '{ int x=3; int  y=5; *(&y-8)=7; return x; }'
 # [22] 支持int关键字
 assert 8 '{ int x, y; x=3; y=5; return x+y; }'
 assert 8 '{ int x=3, y=5; return x+y; }'
+
+# [23] 支持零参函数调用
+assert 3 '{ return ret3(); }'
+assert 5 '{ return ret5(); }'
+assert 8 '{ return ret3()+ret5(); }'
 
 echo OK
