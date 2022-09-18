@@ -4,7 +4,11 @@
 Obj *Locals;
 
 // program = "{" compoundStmt
-// compoundStmt = stmt* "}"
+// compoundStmt =  (declaration | stmt)* "}"
+// declaration = 
+//    declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
+// declspec = "int"
+// declarator = "*"* ident
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
@@ -21,6 +25,7 @@ Obj *Locals;
 // unary = ("+" | "-" | "*" | "&") unary | primary
 // primary = "(" expr ")" | ident | num
 static Node *compoundStmt(Token **Rest, Token *tok);
+static Node *declaration(Token **Rest, Token *Tok);
 static Node *stmt(Token **Rest, Token *Tok);
 static Node *exprStmt(Token **Rest, Token *Tok);
 static Node *expr(Token **Rest, Token *Tok);
@@ -87,15 +92,101 @@ static Node *newVarNode(Obj *Var, Token *Tok)
 }
 
 // insert new variable to 'locals'
-static Obj *newLVar(char *Name)
+static Obj *newLVar(char *Name, Type *Ty)
 {
   Obj *Var = calloc(1, sizeof(Obj));
   Var->Name = Name;
+  Var->Ty = Ty;
   // the new one be the head
   Var->Next = Locals;
   Locals = Var;
   return Var;
 }
+
+// get ident
+static char *getIdent(Token *Tok) {
+  if (Tok -> Kind != TK_IDENT)
+  {
+    errorTok(Tok, "expected an identifier");
+  }
+  return strndup(Tok->Loc, Tok->Len);
+}
+
+// declspec = "int"
+// declarator specifier
+static Type *declspec(Token **Rest, Token *Tok) {
+  *Rest = skip(Tok, "int");
+  return TyInt;
+}
+
+// declarator = "*"* ident
+static Type *declarator(Token **Rest, Token *Tok, Type *Ty) {
+  // "*"*
+  // 构建所有的（多重）指针
+  while (consume(&Tok, Tok, "*"))
+    Ty = pointerTo(Ty);
+
+  if (Tok->Kind != TK_IDENT)
+    errorTok(Tok, "expected a variable name");
+
+  // ident
+  // 变量名
+  Ty->Name = Tok;
+  *Rest = Tok->Next;
+  return Ty;
+}
+
+// declaration =
+// declspec (declarator ("=" expr) ? ("," declarator("=" expr)?)*)? ";"
+static Node *declaration(Token **Rest, Token *Tok) {
+  // declspec
+  // declear base type
+  Type * Basety = declspec(&Tok, Tok);
+
+  Node Head = {};
+  Node *Cur = &Head;
+  // count the "declear" of the variable
+  int I = 0;
+
+  // (declarator ("=" expr)? ("," declarator ("=" expr)?)*)?
+  while (!equal(Tok, ";")) {
+    
+    // the first variable no need to match ","
+    if (I++ > 0)
+      Tok = skip(Tok, ",");
+
+    // declarator
+    // get variable's name and type
+    Type *Ty = declarator(&Tok, Tok, Basety);
+    Obj *Var = newLVar(getIdent(Ty->Name), Ty);
+
+    // 如果不存在"="则为变量声明，不需要生成节点，已经存储在Locals中了
+    // if not exist "=", no need to generate  node
+    if (!equal(Tok, "="))
+      continue;
+
+    // 解析“=”后面的Token
+    // parse the token after "="
+    Node *LHS = newVarNode(Var, Ty->Name);
+
+    // 解析递归赋值语句
+    // parse recursive assignment statement
+    Node *RHS = assign(&Tok, Tok->Next);
+    Node *Node = newBinary(ND_ASSIGN, LHS, RHS, Tok);
+    // 存放在表达式语句中
+    // save to the expression statement
+    Cur->Next = newUnary(ND_EXPR_STMT, Node, Tok);
+    Cur = Cur->Next;
+  }
+
+  // 将所有表达式语句，存放在代码块中
+  // save all expression staements into code block
+  Node *Nd = newNode(ND_BLOCK, Tok);
+  Nd->Body = Head.Next;
+  *Rest = Tok->Next;
+  return Nd;
+}
+
 
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
@@ -181,17 +272,26 @@ static Node *stmt(Token **Rest, Token *Tok)
   return exprStmt(Rest, Tok);
 }
 
-// compoundStmt = stmt* "}"
+// compoundStmt = (declaration | stmt)* "}"
 static Node *compoundStmt(Token **Rest, Token *Tok)
 {
 
   Node Head = {};
   Node *Cur = &Head;
 
-  // stmt* "}"
+  // (declaration | stmt)* "}"
   while (!equal(Tok, "}"))
   {
-    Cur->Next = stmt(&Tok, Tok);
+      // declaration
+    if (equal(Tok, "int"))
+    {
+      Cur->Next = declaration(&Tok, Tok);
+    }
+    // stmt
+    else
+    {
+      Cur->Next = stmt(&Tok, Tok);
+    }
     Cur = Cur->Next;
 
     addType(Cur);
@@ -482,8 +582,9 @@ static Node *primary(Token **Rest, Token *Tok)
     Obj *Var = findVar(Tok);
     // if no exist before, create one
     if (!Var)
-      // strndup copy n 's  characters
-      Var = newLVar(strndup(Tok->Loc, Tok->Len));
+    {
+      errorTok(Tok, "undefined variable");
+    }
     *Rest = Tok->Next;
     return newVarNode(Var, Tok);
   }

@@ -47,9 +47,12 @@ struct Token
 void error(char *Fmt, ...);
 void errorAt(char *Loc, char *Fmt, ...);
 void errorTok(Token *Tok, char *Fmt, ...);
+
 // 判断Token与Str的关系
 bool equal(Token *Tok, char *Str);
 Token *skip(Token *Tok, char *Str);
+bool  consume(Token **Rest, Token *Tok, char *Str);
+
 // 词法分析
 Token *tokenize(char *Input);
 
@@ -91,6 +94,7 @@ struct Obj {
     Obj *Next; // next obj
     char *Name ; // name of variable
     int Offset ; //  offset of fp
+    Type *Ty; // variable type
 };
 
 // function
@@ -146,12 +150,18 @@ typedef enum {
 struct Type {
     TypeKind Kind; // kind
     Type *Base; // pointed type
+
+    Token* Name;
 };
 
 extern Type *TyInt;
 
 // judge the 'type' is integer
 bool isInteger(Type *TY);
+
+// build a pointer type, point to the base type
+Type *pointerTo(Type *Base);
+
 // add type to each node under the Node;
 void addType(Node *Nd);
 

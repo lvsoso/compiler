@@ -57,6 +57,7 @@ void errorTok(Token *Tok, char *Fmt, ...)
     va_list VA;
     va_start(VA, Fmt);
     verrorAt(Tok->Loc, Fmt, VA);
+    exit(-1);
 }
 
 // judge Tok's value if equal to Str
@@ -71,6 +72,19 @@ Token *skip(Token *Tok, char *Str)
     if (!equal(Tok, Str))
         errorTok(Tok, "expect '%s'", Str);
     return Tok->Next;
+}
+
+// Consume the Token
+bool consume(Token **Rest, Token *Tok, char *Str)
+{
+    // exist
+    if (equal(Tok, Str)) {
+        *Rest = Tok->Next;
+        return true;
+    }
+    // no exist
+    *Rest = Tok;
+    return false;
 }
 
 // get number value from token
@@ -123,7 +137,7 @@ static int readPunct(char *Ptr)
 // judge if the keyword
 static bool isKeyword(Token *Tok){
     // keyword list
-    static char *KW[] = {"return", "if", "else", "for", "while"};
+    static char *KW[] = {"return", "if", "else", "for", "while", "int"};
 
     // for-loop the keyword list and check
     for (int l = 0; l < sizeof(KW)/ sizeof(*KW); ++l) {
