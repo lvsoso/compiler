@@ -134,6 +134,7 @@ struct  Node
     
     // 函数调用
     char *FuncName; // 函数名
+    Node *Args;     // 函数参数
 
     Obj *Var;      // save ND_VAR type variable
     int Val; // value of 'ND_NUM' type

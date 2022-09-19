@@ -3,6 +3,9 @@
 // 记录栈深度
 static int Depth;
 
+// 用于函数参数的寄存器们
+static char *ArgReg[] = {"a0", "a1", "a2", "a3", "a4", "a5"};
+
 static void genExpr(Node *Nd);
 
 // code sectionn count
@@ -111,9 +114,23 @@ static void genExpr(Node *Nd)
     return;
    // 函数调用
   case ND_FUNCALL:
+  {
+    int NArgs = 0;
+
+    for (Node *Arg  = Nd->Args; Arg; Arg = Arg->Next){
+      genExpr(Arg);
+      push();
+      NArgs++;
+    }
+
+    for (int i = NArgs - 1; i >= 0; i--)
+      pop(ArgReg[i]);
+      
+    // call function
     printf("\n  # 调用函数%s\n", Nd->FuncName);
     printf("  call %s\n", Nd->FuncName);
     return;
+  }
   default:
     break;
   }
