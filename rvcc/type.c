@@ -14,6 +14,15 @@ Type *pointerTo(Type *Base)
     return Ty;
 }
 
+// function type
+Type *funcType(Type *ReturnTy) {
+  Type *Ty = calloc(1, sizeof(Type));
+  Ty->Kind = TY_FUNC;
+  Ty->ReturnTy = ReturnTy;
+  return Ty;
+}
+
+
 void addType(Node *Nd)
 {
     if (!Nd || Nd->Ty)

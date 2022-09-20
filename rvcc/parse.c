@@ -3,9 +3,15 @@
 // save local variables
 Obj *Locals;
 
-// program = "{" compoundStmt
+/// Some "*" just for the pointer
+
+// program = functionDefinition*
+// functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
+// declspec = "int"
+// declarator = "*"* ident typeSuffix
+// typeSuffix = ("(" ")")?
 // compoundStmt =  (declaration | stmt)* "}"
-// declaration = 
+// declaration =
 //    declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
 // declspec = "int"
 // declarator = "*"* ident
@@ -25,8 +31,10 @@ Obj *Locals;
 // unary = ("+" | "-" | "*" | "&") unary | primary
 // primary = "(" expr ")" | ident func-args? | num
 // funcall = ident "(" (assign ("," assign)*)? ")"
-static Node *compoundStmt(Token **Rest, Token *tok);
+static Type *declspec(Token **Rest, Token *Tok);
+static Type *declarator(Token **Rest, Token *Tok, Type *Ty);
 static Node *declaration(Token **Rest, Token *Tok);
+static Node *compoundStmt(Token **Rest, Token *tok);
 static Node *stmt(Token **Rest, Token *Tok);
 static Node *exprStmt(Token **Rest, Token *Tok);
 static Node *expr(Token **Rest, Token *Tok);
@@ -68,7 +76,7 @@ static Node *newUnary(NodeKind Kind, Node *Expr, Token *Tok)
 }
 
 // new a binary node
-static Node *newBinary(NodeKind Kind, Node *LHS, Node *RHS,  Token *Tok)
+static Node *newBinary(NodeKind Kind, Node *LHS, Node *RHS, Token *Tok)
 {
   Node *Nd = newNode(Kind, Tok);
   Nd->LHS = LHS;
@@ -105,8 +113,9 @@ static Obj *newLVar(char *Name, Type *Ty)
 }
 
 // get ident
-static char *getIdent(Token *Tok) {
-  if (Tok -> Kind != TK_IDENT)
+static char *getIdent(Token *Tok)
+{
+  if (Tok->Kind != TK_IDENT)
   {
     errorTok(Tok, "expected an identifier");
   }
@@ -115,34 +124,56 @@ static char *getIdent(Token *Tok) {
 
 // declspec = "int"
 // declarator specifier
-static Type *declspec(Token **Rest, Token *Tok) {
+static Type *declspec(Token **Rest, Token *Tok)
+{
   *Rest = skip(Tok, "int");
   return TyInt;
 }
 
-// declarator = "*"* ident
-static Type *declarator(Token **Rest, Token *Tok, Type *Ty) {
+// typeSuffix = ("(" ")")?
+static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty) {
+  // ("(" ")")?
+  if (equal(Tok, "(")) 
+  {
+    *Rest = skip(Tok->Next, ")");
+    return funcType(Ty);
+  }
+  *Rest = Tok;
+  return Ty;
+}
+
+// declarator = "*"* ident typeSuffix
+static Type *declarator(Token **Rest, Token *Tok, Type *Ty)
+{
   // "*"*
   // 构建所有的（多重）指针
   while (consume(&Tok, Tok, "*"))
+  {
     Ty = pointerTo(Ty);
+  }
 
   if (Tok->Kind != TK_IDENT)
+  {
     errorTok(Tok, "expected a variable name");
+  }
+
+  // typeSuffix
+  Ty = typeSuffix(Rest, Tok->Next, Ty);
 
   // ident
   // 变量名
   Ty->Name = Tok;
-  *Rest = Tok->Next;
+  
   return Ty;
 }
 
 // declaration =
 // declspec (declarator ("=" expr) ? ("," declarator("=" expr)?)*)? ";"
-static Node *declaration(Token **Rest, Token *Tok) {
+static Node *declaration(Token **Rest, Token *Tok)
+{
   // declspec
   // declear base type
-  Type * Basety = declspec(&Tok, Tok);
+  Type *Basety = declspec(&Tok, Tok);
 
   Node Head = {};
   Node *Cur = &Head;
@@ -150,8 +181,9 @@ static Node *declaration(Token **Rest, Token *Tok) {
   int I = 0;
 
   // (declarator ("=" expr)? ("," declarator ("=" expr)?)*)?
-  while (!equal(Tok, ";")) {
-    
+  while (!equal(Tok, ";"))
+  {
+
     // the first variable no need to match ","
     if (I++ > 0)
       Tok = skip(Tok, ",");
@@ -187,7 +219,6 @@ static Node *declaration(Token **Rest, Token *Tok) {
   *Rest = Tok->Next;
   return Nd;
 }
-
 
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
@@ -283,7 +314,7 @@ static Node *compoundStmt(Token **Rest, Token *Tok)
   // (declaration | stmt)* "}"
   while (!equal(Tok, "}"))
   {
-      // declaration
+    // declaration
     if (equal(Tok, "int"))
     {
       Cur->Next = declaration(&Tok, Tok);
@@ -316,7 +347,7 @@ static Node *exprStmt(Token **Rest, Token *Tok)
   }
 
   // expr ";"
-    Node *Nd = newNode(ND_EXPR_STMT, Tok);
+  Node *Nd = newNode(ND_EXPR_STMT, Tok);
   Nd->LHS = expr(&Tok, Tok);
   *Rest = skip(Tok, ";");
   return Nd;
@@ -350,7 +381,7 @@ static Node *equality(Token **Rest, Token *Tok)
   // ("==" relational | "!=" relational)*
   while (true)
   {
-        Token *Start = Tok;
+    Token *Start = Tok;
     // "==" relational
     if (equal(Tok, "=="))
     {
@@ -379,8 +410,7 @@ static Node *relational(Token **Rest, Token *Tok)
   // ("<" add | "<=" add | ">" add | ">=" add)*
   while (true)
   {
-        Token *Start = Tok;
-
+    Token *Start = Tok;
 
     // "<" add
     if (equal(Tok, "<"))
@@ -418,59 +448,67 @@ static Node *relational(Token **Rest, Token *Tok)
 }
 
 // handle `add`
-static Node *newAdd(Node *LHS, Node *RHS, Token *Tok){
+static Node *newAdd(Node *LHS, Node *RHS, Token *Tok)
+{
   addType(LHS);
   addType(RHS);
 
   // num + num
-  if (isInteger(LHS->Ty) && isInteger(RHS->Ty)){
+  if (isInteger(LHS->Ty) && isInteger(RHS->Ty))
+  {
     return newBinary(ND_ADD, LHS, RHS, Tok);
   }
 
   // could not handle pointer + pointer
-    if (LHS->Ty->Base && RHS->Ty->Base){
-      errorTok(Tok, "invalid operands");
-    }
+  if (LHS->Ty->Base && RHS->Ty->Base)
+  {
+    errorTok(Tok, "invalid operands");
+  }
 
   // 前面已经排除了两个指针的情况
   // 如果第一个表达式成立，则进行互换 num+ptr -> ptr + num
-      if (!LHS->Ty->Base && RHS->Ty->Base) {
+  if (!LHS->Ty->Base && RHS->Ty->Base)
+  {
     Node *Tmp = LHS;
     LHS = RHS;
     RHS = Tmp;
   }
-    
-    // ptr + 1
-    // 1 ： space of one element
-    // need x 8
+
+  // ptr + 1
+  // 1 ： space of one element
+  // need x 8
   RHS = newBinary(ND_MUL, RHS, newNum(8, Tok), Tok);
   return newBinary(ND_ADD, LHS, RHS, Tok);
 }
 
 // handle  `sub`
-static Node *newSub(Node *LHS, Node *RHS, Token *Tok) {
+static Node *newSub(Node *LHS, Node *RHS, Token *Tok)
+{
 
   addType(LHS);
   addType(RHS);
 
   // num - num
-  if (isInteger(LHS->Ty) && isInteger(RHS->Ty)){
+  if (isInteger(LHS->Ty) && isInteger(RHS->Ty))
+  {
     return newBinary(ND_SUB, LHS, RHS, Tok);
   }
 
   // ptr - num
-  if (LHS->Ty->Base && isInteger(RHS->Ty)) {
+  if (LHS->Ty->Base && isInteger(RHS->Ty))
+  {
     RHS = newBinary(ND_MUL, RHS, newNum(8, Tok), Tok);
     addType(RHS);
     Node *Nd = newBinary(ND_SUB, LHS, RHS, Tok);
-  
-   //node type is pointer
+
+    // node type is pointer
     Nd->Ty = LHS->Ty;
     return Nd;
   }
 
   // ptr - ptr，return the num of element between two pointer
-  if (LHS->Ty->Base && RHS->Ty->Base) {
+  if (LHS->Ty->Base && RHS->Ty->Base)
+  {
     Node *Nd = newBinary(ND_SUB, LHS, RHS, Tok);
     Nd->Ty = TyInt;
     return newBinary(ND_DIV, Nd, newNum(8, Tok), Tok);
@@ -489,7 +527,7 @@ static Node *add(Token **Rest, Token *Tok)
   // ("+" mul | "-" mul)*
   while (true)
   {
-        Token *Start = Tok;
+    Token *Start = Tok;
 
     // "+" mul
     if (equal(Tok, "+"))
@@ -566,14 +604,16 @@ static Node *unary(Token **Rest, Token *Tok)
 
 // 解析函数调用
 // funcall = ident "(" (assign ("," assign)*)? ")"
-static Node *funCall(Token **Rest,  Token *Tok){
+static Node *funCall(Token **Rest, Token *Tok)
+{
   Token *Start = Tok;
   Tok = Tok->Next->Next;
 
-  Node Head =  {};
+  Node Head = {};
   Node *Cur = &Head;
 
-    while (!equal(Tok, ")")) {
+  while (!equal(Tok, ")"))
+  {
     if (Cur != &Head)
       Tok = skip(Tok, ",");
     // assign
@@ -636,15 +676,35 @@ static Node *primary(Token **Rest, Token *Tok)
   return NULL;
 }
 
+// functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
+static Function *function(Token **Rest, Token *Tok)
+{
+  // declspec
+  Type *Ty = declspec(&Tok, Tok);
+
+  // declarator? ident "(" ")"
+  Ty = declarator(&Tok, Tok, Ty);
+
+  Locals = NULL;
+  Function *Fn = calloc(1, sizeof(Function));
+  Fn->Name = getIdent(Ty->Name);
+  Tok = skip(Tok, "{");
+  Fn->Body = compoundStmt(Rest, Tok);
+  Fn->Locals = Locals;
+  return Fn;
+}
+
 // syntax parser entry function
-// program = "{" compoundStmt
+// program = functionDefinition*
 Function *parse(Token *Tok)
 {
-  // "{"
-  Tok = skip(Tok, "{");
+  Function Head = {};
+  Function *Cur = &Head;
 
-  Function *Prog = calloc(1, sizeof(Function));
-  Prog->Body = compoundStmt(&Tok, Tok);
-  Prog->Locals = Locals; // save local variable
-  return Prog;
+  while (Tok->Kind != TK_EOF)
+  {
+    Cur = Cur->Next = function(&Tok, Tok);
+  }
+
+  return Head.Next;
 }

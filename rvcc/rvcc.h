@@ -102,6 +102,8 @@ struct Obj {
 typedef struct Function Function;
 
 struct Function {
+    Function * Next; // the next function
+    char * Name; // function name
     Node *Body; // function body
     Obj *Locals; // local variable
     int StackSize; // stack size
@@ -150,6 +152,7 @@ Function *parse(Token *Tok);
 typedef enum {
     TY_INT, // int
     TY_PTR, // pointer
+    TY_FUNC, // function
 } TypeKind;
 
 struct Type {
@@ -157,6 +160,9 @@ struct Type {
     Type *Base; // pointed type
 
     Token* Name;
+
+    // type of function return
+    Type *ReturnTy; 
 };
 
 extern Type *TyInt;
@@ -169,6 +175,9 @@ Type *pointerTo(Type *Base);
 
 // add type to each node under the Node;
 void addType(Node *Nd);
+
+// function type
+Type *funcType(Type *ReturnTy);
 
 //
 // 语义分析与代码生成
