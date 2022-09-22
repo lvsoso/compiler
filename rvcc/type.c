@@ -4,7 +4,15 @@
 // 全局变量TyInt，用来将Type赋值为int类型
 Type *TyInt = &(Type){TY_INT};
 
+// judge the 'type' is integer
 bool isInteger(Type *Ty) { return Ty->Kind == TY_INT; }
+
+// copy type
+Type *copyType(Type *Ty) {
+  Type *Ret = calloc(1, sizeof(Type));
+  *Ret = *Ty;
+  return Ret;
+}
 
 Type *pointerTo(Type *Base)
 {
@@ -42,6 +50,12 @@ void addType(Node *Nd)
         addType(N);
     }
 
+    // recursive access all args
+    for (Node *N = Nd->Args; N; N = N->Next)
+    {
+    addType(N);
+    }
+    
     switch (Nd->Kind)
     {
     // 节将节点类型设为 节点左部的类型

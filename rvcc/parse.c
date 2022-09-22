@@ -9,7 +9,9 @@ Obj *Locals;
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
 // declspec = "int"
 // declarator = "*"* ident typeSuffix
-// typeSuffix = ("(" ")")?
+// typeSuffix = ("(" funcParams? ")")?
+// funcParams = param ("," param)*
+// param = declspec declarator
 // compoundStmt =  (declaration | stmt)* "}"
 // declaration =
 //    declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
@@ -130,13 +132,40 @@ static Type *declspec(Token **Rest, Token *Tok)
   return TyInt;
 }
 
-// typeSuffix = ("(" ")")?
-static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty) {
-  // ("(" ")")?
-  if (equal(Tok, "(")) 
+// typeSuffix = ("(" funcParams? ")")?
+// funcParams = param ("," param)*
+// param = declspec declarator
+static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty)
+{
+  // ("(" funcParams? ")")?
+  if (equal(Tok, "("))
   {
-    *Rest = skip(Tok->Next, ")");
-    return funcType(Ty);
+    Tok = Tok->Next;
+
+    // save params
+    Type Head = {};
+    Type *Cur = &Head;
+
+    while (!equal(Tok, ")"))
+    {
+      // funcParams = param ("," param)*
+      // param = declspec declarator
+      if (Cur != &Head)
+      {
+        Tok = skip(Tok, ",");
+      }
+
+      Type *BaseTy = declspec(&Tok, Tok);
+      Type *DeclarTy = declarator(&Tok, Tok, BaseTy);
+
+      Cur->Next = copyType(DeclarTy);
+      Cur = Cur->Next;
+    }
+
+    Ty = funcType(Ty);
+    Ty->Params = Head.Next;
+    *Rest = Tok->Next;
+    return Ty;
   }
   *Rest = Tok;
   return Ty;
@@ -163,7 +192,7 @@ static Type *declarator(Token **Rest, Token *Tok, Type *Ty)
   // ident
   // 变量名
   Ty->Name = Tok;
-  
+
   return Ty;
 }
 
@@ -676,6 +705,17 @@ static Node *primary(Token **Rest, Token *Tok)
   return NULL;
 }
 
+// add params to the Locals
+// reverse ?
+static void createParamLVars(Type *Param) {
+  if (Param){
+    createParamLVars(Param->Next);
+    // add to local
+    newLVar(getIdent(Param->Name), Param);
+  }
+}
+
+
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
 static Function *function(Token **Rest, Token *Tok)
 {
@@ -688,6 +728,11 @@ static Function *function(Token **Rest, Token *Tok)
   Locals = NULL;
   Function *Fn = calloc(1, sizeof(Function));
   Fn->Name = getIdent(Ty->Name);
+
+// handle params
+  createParamLVars(Ty->Params);
+  Fn->Params = Locals;
+
   Tok = skip(Tok, "{");
   Fn->Body = compoundStmt(Rest, Tok);
   Fn->Locals = Locals;

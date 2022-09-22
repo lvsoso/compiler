@@ -104,6 +104,8 @@ typedef struct Function Function;
 struct Function {
     Function * Next; // the next function
     char * Name; // function name
+    Obj *Params; // function Params
+
     Node *Body; // function body
     Obj *Locals; // local variable
     int StackSize; // stack size
@@ -159,16 +161,23 @@ struct Type {
     TypeKind Kind; // kind
     Type *Base; // pointed type
 
-    Token* Name;
+    Token* Name; // type's name, veriable's name; function's name
 
     // type of function return
     Type *ReturnTy; 
+
+    Type *Params; //
+
+    Type *Next;
 };
 
 extern Type *TyInt;
 
 // judge the 'type' is integer
 bool isInteger(Type *TY);
+
+// copy type
+Type *copyType(Type *Ty);
 
 // build a pointer type, point to the base type
 Type *pointerTo(Type *Base);
