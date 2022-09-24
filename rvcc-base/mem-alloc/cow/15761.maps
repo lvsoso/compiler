@@ -1,0 +1,18 @@
+560226590000-560226591000 r-xp 00000000 103:02 54481082                  /home/lv/lvsoso/compiler/rvcc-base/mem-alloc/main.elf
+560226790000-560226791000 r--p 00000000 103:02 54481082                  /home/lv/lvsoso/compiler/rvcc-base/mem-alloc/main.elf
+560226791000-560226792000 rw-p 00001000 103:02 54481082                  /home/lv/lvsoso/compiler/rvcc-base/mem-alloc/main.elf
+5602281c1000-5602281e2000 rw-p 00000000 00:00 0                          [heap]
+7fa0ec07d000-7fa0ec264000 r-xp 00000000 103:02 59659623                  /lib/x86_64-linux-gnu/libc-2.27.so
+7fa0ec264000-7fa0ec464000 ---p 001e7000 103:02 59659623                  /lib/x86_64-linux-gnu/libc-2.27.so
+7fa0ec464000-7fa0ec468000 r--p 001e7000 103:02 59659623                  /lib/x86_64-linux-gnu/libc-2.27.so
+7fa0ec468000-7fa0ec46a000 rw-p 001eb000 103:02 59659623                  /lib/x86_64-linux-gnu/libc-2.27.so
+7fa0ec46a000-7fa0ec46e000 rw-p 00000000 00:00 0 
+7fa0ec46e000-7fa0ec497000 r-xp 00000000 103:02 59639865                  /lib/x86_64-linux-gnu/ld-2.27.so
+7fa0ec668000-7fa0ec66a000 rw-p 00000000 00:00 0 
+7fa0ec697000-7fa0ec698000 r--p 00029000 103:02 59639865                  /lib/x86_64-linux-gnu/ld-2.27.so
+7fa0ec698000-7fa0ec699000 rw-p 0002a000 103:02 59639865                  /lib/x86_64-linux-gnu/ld-2.27.so
+7fa0ec699000-7fa0ec69a000 rw-p 00000000 00:00 0 
+7ffdc8bcd000-7ffdc8bef000 rw-p 00000000 00:00 0                          [stack]
+7ffdc8bf3000-7ffdc8bf6000 r--p 00000000 00:00 0                          [vvar]
+7ffdc8bf6000-7ffdc8bf7000 r-xp 00000000 00:00 0                          [vdso]
+ffffffffff600000-ffffffffff601000 --xp 00000000 00:00 0                  [vsyscall]
