@@ -1,0 +1,26 @@
+//输出格式
+OUTPUT_FORMAT(elf32-littleriscv)
+//配置内存空间，起始地址为0x10000，长度为0x50000
+MEMORY
+{
+  RAM (xrw) : ORIGIN = 0x10000 , LENGTH = 0x50000
+}
+//定义输出节
+SECTIONS
+{
+    //定义text节包含链接文件的所有以.text开头的节
+  .text :
+  {
+    *(.text) *(.text.*)
+  } > RAM
+    //定义data节包含链接文件的所有以.data、.sdata、.sdata2、.rodata开头的节
+  .data :
+  {
+      *(.data .data.*) *(.sdata .sdata.*) *(.sdata2.*) *(.rodata) *(.rodata*)
+  } > RAM
+    //定义bss节包含链接文件的所有以.bss、.sbss、.common开头的节
+  .bss :
+    {
+        *(.sbss*) *(.bss*) *(COMMON*)
+  } > RAM
+}
