@@ -9,8 +9,8 @@ Obj *Locals;
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
 // declspec = "int"
 // declarator = "*"* ident typeSuffix
-// typeSuffix = ("(" funcParams? ")")?
-// funcParams = param ("," param)*
+// typeSuffix = "(" funcParams | "[" num "]" | ε
+// funcParams = (param ("," param)*)? ")"
 // param = declspec declarator
 // compoundStmt =  (declaration | stmt)* "}"
 // declaration =
@@ -124,6 +124,14 @@ static char *getIdent(Token *Tok)
   return strndup(Tok->Loc, Tok->Len);
 }
 
+// get number
+static int getNumber(Token *Tok){
+  if(Tok->Kind != TK_NUM){
+    errorTok(Tok, "expected a number");
+  }
+  return Tok->Val;
+}
+
 // declspec = "int"
 // declarator specifier
 static Type *declspec(Token **Rest, Token *Tok)
@@ -132,45 +140,46 @@ static Type *declspec(Token **Rest, Token *Tok)
   return TyInt;
 }
 
-// typeSuffix = ("(" funcParams? ")")?
-// funcParams = param ("," param)*
+// funcParams = (param ("," param)*)? ")"
 // param = declspec declarator
-static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty)
-{
-  // ("(" funcParams? ")")?
-  if (equal(Tok, "("))
-  {
-    Tok = Tok->Next;
+static Type *funcParams(Token **Rest, Token *Tok, Type *Ty) {
+  Type Head = {};
+  Type *Cur = &Head;
 
-    // save params
-    Type Head = {};
-    Type *Cur = &Head;
-
-    while (!equal(Tok, ")"))
-    {
-      // funcParams = param ("," param)*
-      // param = declspec declarator
-      if (Cur != &Head)
-      {
-        Tok = skip(Tok, ",");
-      }
-
-      Type *BaseTy = declspec(&Tok, Tok);
-      Type *DeclarTy = declarator(&Tok, Tok, BaseTy);
-
-      Cur->Next = copyType(DeclarTy);
-      Cur = Cur->Next;
-    }
-
-    Ty = funcType(Ty);
-    Ty->Params = Head.Next;
-    *Rest = Tok->Next;
-    return Ty;
+  while (!equal(Tok, ")")) {
+    // funcParams = param ("," param)*
+    // param = declspec declarator
+    if (Cur != &Head)
+      Tok = skip(Tok, ",");
+    Type *BaseTy = declspec(&Tok, Tok);
+    Type *DeclarTy = declarator(&Tok, Tok, BaseTy);
+    // copy the type
+    Cur->Next = copyType(DeclarTy);
+    Cur = Cur->Next;
   }
-  *Rest = Tok;
+
+  // package a func type
+  Ty = funcType(Ty);
+  // pass the args
+  Ty->Params = Head.Next;
+  *Rest = Tok->Next;
   return Ty;
 }
 
+// typeSuffix = ("(" funcParams? ")")?
+static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty) {
+  if (equal(Tok, "("))
+    return funcParams(Rest, Tok->Next, Ty);
+
+  if (equal(Tok, "[")) {
+    int Sz = getNumber(Tok->Next);
+    *Rest = skip(Tok->Next->Next, "]");
+    return arrayOf(Ty, Sz);
+  }
+
+  *Rest = Tok;
+  return Ty;
+}
 // declarator = "*"* ident typeSuffix
 static Type *declarator(Token **Rest, Token *Tok, Type *Ty)
 {
@@ -504,9 +513,9 @@ static Node *newAdd(Node *LHS, Node *RHS, Token *Tok)
   }
 
   // ptr + 1
-  // 1 ： space of one element
-  // need x 8
-  RHS = newBinary(ND_MUL, RHS, newNum(8, Tok), Tok);
+  // 1 ： size of one element
+  // need x size
+  RHS = newBinary(ND_MUL, RHS,newNum(LHS->Ty->Base->Size, Tok), Tok);
   return newBinary(ND_ADD, LHS, RHS, Tok);
 }
 
@@ -526,7 +535,7 @@ static Node *newSub(Node *LHS, Node *RHS, Token *Tok)
   // ptr - num
   if (LHS->Ty->Base && isInteger(RHS->Ty))
   {
-    RHS = newBinary(ND_MUL, RHS, newNum(8, Tok), Tok);
+    RHS = newBinary(ND_MUL, RHS, newNum(LHS->Ty->Base->Size, Tok), Tok);
     addType(RHS);
     Node *Nd = newBinary(ND_SUB, LHS, RHS, Tok);
 
@@ -540,7 +549,7 @@ static Node *newSub(Node *LHS, Node *RHS, Token *Tok)
   {
     Node *Nd = newBinary(ND_SUB, LHS, RHS, Tok);
     Nd->Ty = TyInt;
-    return newBinary(ND_DIV, Nd, newNum(8, Tok), Tok);
+    return newBinary(ND_DIV, Nd, newNum(LHS->Ty->Base->Size, Tok), Tok);
   }
 
   errorTok(Tok, "invalid operands");

@@ -155,13 +155,18 @@ typedef enum {
     TY_INT, // int
     TY_PTR, // pointer
     TY_FUNC, // function
+    TY_ARRAY, // array
 } TypeKind;
 
 struct Type {
     TypeKind Kind; // kind
+    int Size; // return by 'sizeof'
     Type *Base; // pointed type
 
     Token* Name; // type's name, veriable's name; function's name
+
+  // array
+  int ArrayLen; // len of array, count of the elements
 
     // type of function return
     Type *ReturnTy; 
@@ -184,6 +189,9 @@ Type *pointerTo(Type *Base);
 
 // add type to each node under the Node;
 void addType(Node *Nd);
+
+// array type
+Type *arrayOf(Type *Base, int Size);
 
 // function type
 Type *funcType(Type *ReturnTy);

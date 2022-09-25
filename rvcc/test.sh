@@ -166,4 +166,10 @@ assert 1 'int main() { return sub2(4,3); } int sub2(int x, int y) { return x-y; 
 assert 55 'int main() { return fib(9); } int fib(int x) { if (x<=1) return 1; return fib(x-1) + fib(x-2); }'
 assert 12 'int main() { return add3(3,4,5); } int add3(int x, int y, int z) { int a; a =  x+y; a = a + z; return a; }'
 
+# [27] 支持一维数组
+assert 3 'int main() { int x[2]; int *y=&x; *y=3; return *x; }'
+assert 3 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *x; }'
+assert 4 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *(x+1); }'
+assert 5 'int main() { int x[3]; *x=3; *(x+1)=4; *(x+2)=5; return *(x+2); }'
+
 echo OK
