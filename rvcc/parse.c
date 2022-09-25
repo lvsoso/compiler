@@ -9,7 +9,7 @@ Obj *Locals;
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
 // declspec = "int"
 // declarator = "*"* ident typeSuffix
-// typeSuffix = "(" funcParams | "[" num "]" | ε
+// typeSuffix = "(" funcParams | "[" num "]" typeSuffix | ε
 // funcParams = (param ("," param)*)? ")"
 // param = declspec declarator
 // compoundStmt =  (declaration | stmt)* "}"
@@ -173,7 +173,8 @@ static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty) {
 
   if (equal(Tok, "[")) {
     int Sz = getNumber(Tok->Next);
-    *Rest = skip(Tok->Next->Next, "]");
+    Tok = skip(Tok->Next->Next, "]");
+    Ty = typeSuffix(Rest, Tok, Ty);
     return arrayOf(Ty, Sz);
   }
 
