@@ -32,7 +32,7 @@ Obj *Locals;
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "*" | "&") unary | postfix
 // postfix = primary ("[" expr "]")*
-// primary = "(" expr ")" | ident func-args? | num
+// primary = "(" expr ")" | "sizeof" unary | ident funcArgs? | num
 // funcall = ident "(" (assign ("," assign)*)? ")"
 static Type *declspec(Token **Rest, Token *Tok);
 static Type *declarator(Token **Rest, Token *Tok, Type *Ty);
@@ -699,6 +699,13 @@ static Node *primary(Token **Rest, Token *Tok)
     Node *Nd = expr(&Tok, Tok->Next);
     *Rest = skip(Tok, ")");
     return Nd;
+  }
+  
+  // "sizeof" unary
+  if (equal(Tok, "sizeof")) {
+    Node *Nd = unary(Rest, Tok->Next);
+    addType(Nd);
+    return newNum(Nd->Ty->Size, Tok);
   }
 
   // ident args?
