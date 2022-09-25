@@ -30,7 +30,8 @@ Obj *Locals;
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
 // mul = unary ("*" unary | "/" unary)*
-// unary = ("+" | "-" | "*" | "&") unary | primary
+// unary = ("+" | "-" | "*" | "&") unary | postfix
+// postfix = primary ("[" expr "]")*
 // primary = "(" expr ")" | ident func-args? | num
 // funcall = ident "(" (assign ("," assign)*)? ")"
 static Type *declspec(Token **Rest, Token *Tok);
@@ -46,6 +47,7 @@ static Node *relational(Token **Rest, Token *Tok);
 static Node *add(Token **Rest, Token *Tok);
 static Node *mul(Token **Rest, Token *Tok);
 static Node *unary(Token **Rest, Token *Tok);
+static Node *postfix(Token **Rest, Token *Tok);
 static Node *primary(Token **Rest, Token *Tok);
 
 // find local variable by name
@@ -618,7 +620,7 @@ static Node *mul(Token **Rest, Token *Tok)
   }
 }
 
-// unary = ("+" | "-"  | "*" | "&") unary | primary
+// unary = ("+" | "-"  | "*" | "&") unary | postfix
 static Node *unary(Token **Rest, Token *Tok)
 {
   // "+" unary
@@ -637,8 +639,26 @@ static Node *unary(Token **Rest, Token *Tok)
   if (equal(Tok, "*"))
     return newUnary(ND_DEREF, unary(Rest, Tok->Next), Tok);
 
+  // postfix
+  return postfix(Rest, Tok);
+}
+
+// postfix = primary ("[" expr "]")*
+static  Node* postfix(Token **Rest, Token *Tok)
+{
   // primary
-  return primary(Rest, Tok);
+  Node *Nd = primary(&Tok, Tok);
+
+  // ("[" expr "]")*
+  while (equal(Tok, "[")) {
+    // x[y] 等价于 *(x+y)
+    Token *Start = Tok;
+    Node *Idx = expr(&Tok, Tok->Next);
+    Tok = skip(Tok, "]");
+    Nd = newUnary(ND_DEREF, newAdd(Nd, Idx, Start), Start);
+  }
+  *Rest = Tok;
+  return Nd;
 }
 
 // 解析函数调用
