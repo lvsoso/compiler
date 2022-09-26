@@ -151,6 +151,7 @@ Obj *parse(Token *Tok);
 
 // types
 typedef enum {
+    TY_CHAR,  // char
     TY_INT, // int
     TY_PTR, // pointer
     TY_FUNC, // function
@@ -176,6 +177,7 @@ struct Type {
 };
 
 extern Type *TyInt;
+extern Type *TyChar;
 
 // judge the 'type' is integer
 bool isInteger(Type *TY);

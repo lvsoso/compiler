@@ -9,7 +9,7 @@ Obj *Globals;
 
 // program = (functionDefinition* | global-variable)*
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-// declspec = "int"
+// declspec = "char" | "int"
 // declarator = "*"* ident typeSuffix
 // typeSuffix = "(" funcParams | "[" num "]" typeSuffix | ε
 // funcParams = (param ("," param)*)? ")"
@@ -17,8 +17,6 @@ Obj *Globals;
 // compoundStmt =  (declaration | stmt)* "}"
 // declaration =
 //    declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
-// declspec = "int"
-// declarator = "*"* ident
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
@@ -167,14 +165,20 @@ static int getNumber(Token *Tok){
   return Tok->Val;
 }
 
-// declspec = "int"
+// declspec = "char" | "int"
 // declarator specifier
 static Type *declspec(Token **Rest, Token *Tok)
 {
+  // "char"
+  if (equal(Tok, "char")) {
+    *Rest = Tok->Next;
+    return TyChar;
+  }
+
+  // "int"
   *Rest = skip(Tok, "int");
   return TyInt;
 }
-
 // funcParams = (param ("," param)*)? ")"
 // param = declspec declarator
 static Type *funcParams(Token **Rest, Token *Tok, Type *Ty) {
@@ -294,6 +298,11 @@ static Node *declaration(Token **Rest, Token *Tok)
   return Nd;
 }
 
+// 判断是否为类型名
+static bool isTypename(Token *Tok) {
+  return equal(Tok, "char") || equal(Tok, "int");
+}
+
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
@@ -389,7 +398,7 @@ static Node *compoundStmt(Token **Rest, Token *Tok)
   while (!equal(Tok, "}"))
   {
     // declaration
-    if (equal(Tok, "int"))
+   if (isTypename(Tok))
     {
       Cur->Next = declaration(&Tok, Tok);
     }

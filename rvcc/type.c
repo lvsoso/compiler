@@ -4,8 +4,10 @@
 // 全局变量TyInt，用来将Type赋值为int类型
 Type *TyInt = &(Type){TY_INT, 8};
 
+Type *TyChar = &(Type){TY_CHAR, 1};
+
 // judge the 'type' is integer
-bool isInteger(Type *Ty) { return Ty->Kind == TY_INT; }
+bool isInteger(Type *Ty) { return Ty->Kind == TY_CHAR || Ty->Kind == TY_INT; }
 
 // copy type
 Type *copyType(Type *Ty) {
