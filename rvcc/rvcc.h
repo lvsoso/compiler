@@ -98,7 +98,7 @@ struct Obj {
     // local variable
     int Offset; //  offset of fp
     Type *Ty; // variable type
-    bool isLocal; // local or global variable
+    bool IsLocal; // local or global variable
 
     // function or global variable
     bool isFunction;

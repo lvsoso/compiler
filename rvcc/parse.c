@@ -57,10 +57,24 @@ static Obj *findVar(Token *Tok)
 {
   // for-loop locals variable
   for (Obj *Var = Locals; Var; Var = Var->Next)
+  {
     // compare name
     if (strlen(Var->Name) == Tok->Len &&
         !strncmp(Tok->Loc, Var->Name, Tok->Len))
+    {
       return Var;
+    }
+  }
+
+  // for-loop global variable
+  for (Obj *Var = Globals; Var; Var = Var->Next)
+  {
+    if (strlen(Var->Name) == Tok->Len &&
+    !strncmp(Tok->Loc, Var->Name, Tok->Len))
+    {
+      return Var;
+    }
+  }
   return NULL;
 }
 
@@ -119,7 +133,7 @@ static Obj *newVar(char *Name, Type *Ty)
 static Obj *newLVar(char *Name, Type *Ty)
 {
   Obj* Var = newVar(Name, Ty);
-  Var->isLocal = true;
+  Var->IsLocal = true;
   // the new one be the head
   Var->Next = Locals;
   Locals = Var;
@@ -791,6 +805,38 @@ static Token *function(Token *Tok, Type *BaseTy) {
   return Tok;
 }
 
+// build global variable
+static Token *globalVariable(Token *Tok, Type *Basety)
+{
+  bool First = true;
+
+  while (!consume(&Tok, Tok, ";"))
+  {
+    if(!First) {
+      Tok = skip(Tok, ",");
+    }
+    First = false;
+
+    Type *Ty = declarator(&Tok, Tok, Basety);
+    newGVar(getIdent(Ty->Name), Ty);
+  }
+
+  return Tok;
+}
+
+// judge function or global variable
+static bool isFunction(Token *Tok)
+{
+  if(equal(Tok, ";"))
+  {
+    return false;
+  }
+
+  Type Dummy =  {};
+  Type* Ty = declarator(&Tok, Tok, &Dummy);
+  return Ty->Kind == TY_FUNC;
+}
+
 
 // syntax parser entry function
 // program = (functionDefinition* | global-variable)*
@@ -801,7 +847,15 @@ Obj *parse(Token *Tok)
   while (Tok->Kind != TK_EOF)
   {
     Type* BaseTy = declspec(&Tok, Tok);
-    Tok = function(Tok, BaseTy);
+    
+    // function
+    if (isFunction(Tok)) {
+      Tok = function(Tok, BaseTy);
+      continue;
+    }
+
+    // global variable
+    Tok = globalVariable(Tok, BaseTy);
   }
 
   return Globals;
