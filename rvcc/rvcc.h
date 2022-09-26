@@ -94,16 +94,15 @@ typedef struct Obj Obj;
 struct Obj {
     Obj *Next; // next obj
     char *Name ; // name of variable
-    int Offset ; //  offset of fp
+    
+    // local variable
+    int Offset; //  offset of fp
     Type *Ty; // variable type
-};
+    bool isLocal; // local or global variable
 
-// function
-typedef struct Function Function;
+    // function or global variable
+    bool isFunction;
 
-struct Function {
-    Function * Next; // the next function
-    char * Name; // function name
     Obj *Params; // function Params
 
     Node *Body; // function body
@@ -146,7 +145,7 @@ struct  Node
 
 
 // 语法解析入口函数
-Function *parse(Token *Tok);
+Obj *parse(Token *Tok);
 
 // Types System
 
@@ -201,4 +200,4 @@ Type *funcType(Type *ReturnTy);
 //
 
 // 代码生成入口函数
-void codegen(Function *Prog);
+void codegen(Obj *Prog);

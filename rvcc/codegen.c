@@ -7,7 +7,7 @@ static int Depth;
 static char *ArgReg[] = {"a0", "a1", "a2", "a3", "a4", "a5"};
 
 // save current funtion
-static Function *CurrentFn;
+static Obj *CurrentFn;
 
 static void genExpr(Node *Nd);
 
@@ -338,10 +338,15 @@ static void genStmt(Node *Nd)
   errorTok(Nd->Tok, "invalid statement");
 }
 // calculate the variable offset from the 'Locals'
-static void assignLVarOffsets(Function *Prog)
+static void assignLVarOffsets(Obj *Prog)
 {
-  for (Function *Fn = Prog; Fn; Fn = Fn->Next)
+  for (Obj *Fn = Prog; Fn; Fn = Fn->Next)
   {
+    if (!Fn->isFunction)
+    {
+      continue;
+    }
+
     int Offset = 0;
     // for-loop local variables
     for (Obj *Var = Fn->Locals; Var; Var = Var->Next)
@@ -359,15 +364,21 @@ static void assignLVarOffsets(Function *Prog)
 }
 
 // code gen entry function
-void codegen(Function *Prog)
+void codegen(Obj *Prog)
 {
   assignLVarOffsets(Prog);
 
   // 为每个函数单独生成代码
-  for (Function *Fn = Prog; Fn; Fn = Fn->Next)
+  for (Obj *Fn = Prog; Fn; Fn = Fn->Next)
   {
+    if (!Fn->isFunction)
+    {
+      continue;
+    }
+
     printf("\n  # 定义全局%s段\n", Fn->Name);
     printf("  .globl %s\n", Fn->Name);
+    printf("  .text\n");
     printf("# =====%s段开始===============\n", Fn->Name);
     printf("# %s段标签\n", Fn->Name);
     printf("%s:\n", Fn->Name);

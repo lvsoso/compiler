@@ -2,10 +2,12 @@
 
 // save local variables
 Obj *Locals;
+// save global variables
+Obj *Globals; 
 
 /// Some "*" just for the pointer
 
-// program = functionDefinition*
+// program = (functionDefinition* | global-variable)*
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
 // declspec = "int"
 // declarator = "*"* ident typeSuffix
@@ -104,15 +106,32 @@ static Node *newVarNode(Obj *Var, Token *Tok)
   return Nd;
 }
 
+// new variable
+static Obj *newVar(char *Name, Type *Ty) 
+{
+  Obj *Var = calloc(1, sizeof(Obj));
+  Var -> Name = Name;
+  Var -> Ty = Ty;
+  return Var;
+}
+
 // insert new variable to 'locals'
 static Obj *newLVar(char *Name, Type *Ty)
 {
-  Obj *Var = calloc(1, sizeof(Obj));
-  Var->Name = Name;
-  Var->Ty = Ty;
+  Obj* Var = newVar(Name, Ty);
+  Var->isLocal = true;
   // the new one be the head
   Var->Next = Locals;
   Locals = Var;
+  return Var;
+}
+
+// add new global variable
+static Obj *newGVar(char *Name, Type *Ty) 
+{
+  Obj* Var = newVar(Name, Ty);
+  Var->Next = Globals;
+  Globals = Var;
   return Var;
 }
 
@@ -752,41 +771,38 @@ static void createParamLVars(Type *Param) {
   }
 }
 
-
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-static Function *function(Token **Rest, Token *Tok)
-{
-  // declspec
-  Type *Ty = declspec(&Tok, Tok);
+static Token *function(Token *Tok, Type *BaseTy) {
+  Type *Ty = declarator(&Tok, Tok, BaseTy);
 
-  // declarator? ident "(" ")"
-  Ty = declarator(&Tok, Tok, Ty);
+  Obj *Fn = newGVar(getIdent(Ty->Name), Ty);
+  Fn -> isFunction = true;
 
+  // clear locals
   Locals = NULL;
-  Function *Fn = calloc(1, sizeof(Function));
-  Fn->Name = getIdent(Ty->Name);
 
-// handle params
+  // handle params
   createParamLVars(Ty->Params);
   Fn->Params = Locals;
 
   Tok = skip(Tok, "{");
-  Fn->Body = compoundStmt(Rest, Tok);
+  Fn->Body = compoundStmt(&Tok, Tok);
   Fn->Locals = Locals;
-  return Fn;
+  return Tok;
 }
 
+
 // syntax parser entry function
-// program = functionDefinition*
-Function *parse(Token *Tok)
+// program = (functionDefinition* | global-variable)*
+Obj *parse(Token *Tok)
 {
-  Function Head = {};
-  Function *Cur = &Head;
+  Globals = NULL;
 
   while (Tok->Kind != TK_EOF)
   {
-    Cur = Cur->Next = function(&Tok, Tok);
+    Type* BaseTy = declspec(&Tok, Tok);
+    Tok = function(Tok, BaseTy);
   }
 
-  return Head.Next;
+  return Globals;
 }
