@@ -148,6 +148,24 @@ static bool isKeyword(Token *Tok){
     return false;
 }
 
+// read string literals
+static Token *readStringLiteral(char *Start){
+    char *P = Start + 1;
+
+    // skip all `"`
+    for (; *P != '"'; ++P){
+        if (*P == '\n' || *P == '\0'){
+            errorAt(Start, "unclosed string literal");
+        }
+    }
+
+    Token *Tok = newToken(TK_STR, Start, P + 1);
+
+    // build char[] type
+    Tok->Ty = arrayOf(TyChar, P - Start);
+    Tok->Str = strndup(Start + 1, P - Start - 1);
+    return Tok;
+}
 
 // convert 'return' to keyword
 static void convertKeywords(Token *Tok)
@@ -189,6 +207,14 @@ Token *tokenize(char *P)
             continue;
         }
 
+        // parser string literals
+        if (*P == '"') {
+        Cur->Next = readStringLiteral(P);
+        Cur = Cur->Next;
+        P += Cur->Len;
+        continue;
+        }
+        
         // parsing var or keyword
         // [a-zA-Z_][a-zA-Z0-9_]*
         if (isIdent1(*P))

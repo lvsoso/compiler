@@ -32,7 +32,7 @@ Obj *Globals;
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "*" | "&") unary | postfix
 // postfix = primary ("[" expr "]")*
-// primary = "(" expr ")" | "sizeof" unary | ident funcArgs? | num
+// primary = "(" expr ")" | "sizeof" unary | ident funcArgs? |  str | num
 // funcall = ident "(" (assign ("," assign)*)? ")"
 static Type *declspec(Token **Rest, Token *Tok);
 static Type *declarator(Token **Rest, Token *Tok, Type *Ty);
@@ -144,6 +144,27 @@ static Obj *newGVar(char *Name, Type *Ty)
   Obj* Var = newVar(Name, Ty);
   Var->Next = Globals;
   Globals = Var;
+  return Var;
+}
+
+// new unique name
+static char *newUniqueName(void)
+{
+  static int Id = 0;
+  char *Buf = calloc(1, 20);
+
+  // format and save string
+  sprintf(Buf, ".L..%d", Id++);
+  return Buf;
+}
+
+// anonymous global varibale
+static Obj *newAnonGVar(Type *Ty) { return newGVar(newUniqueName(), Ty); }
+
+// new string literal
+static Obj *newStringLiteral(char *Str, Type *Ty) {
+  Obj *Var = newAnonGVar(Ty);
+  Var->InitData = Str;
   return Var;
 }
 
@@ -732,7 +753,7 @@ static Node *funCall(Token **Rest, Token *Tok)
 }
 
 // 解析括号、数字
-// primary = "(" expr ")" | ident func-args? | num
+// primary = "(" expr ")" | ident func-args? |  str | num
 static Node *primary(Token **Rest, Token *Tok)
 {
   // "(" expr ")"
@@ -772,6 +793,13 @@ static Node *primary(Token **Rest, Token *Tok)
     return newVarNode(Var, Tok);
   }
 
+  // str
+  if (Tok->Kind == TK_STR) {
+    Obj *Var = newStringLiteral(Tok->Str, Tok->Ty);
+    *Rest = Tok->Next;
+    return newVarNode(Var, Tok);
+  }
+  
   // num
   if (Tok->Kind == TK_NUM)
   {

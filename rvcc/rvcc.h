@@ -16,6 +16,9 @@
 // 共用头文件，定义了多个文件间共同使用的函数和数据
 //
 
+typedef struct Type Type;
+typedef struct Node Node;
+
 //
 // 标记符分析，词法分析
 //
@@ -26,6 +29,7 @@ typedef enum
     TK_IDENT, // ident, variable name or function name
     TK_KEYWORD,  // keyword
     TK_PUNCT, // +, -
+    TK_STR,     // string literals
     TK_NUM,   // number
     TK_EOF,   // end
 } TokenKind;
@@ -40,6 +44,8 @@ struct Token
     int Val;
     char *Loc; // position
     int Len;
+    Type *Ty;
+    char *Str;
 };
 
 
@@ -86,9 +92,6 @@ typedef enum {
 
 // AST binary tree's node
 
-typedef struct Type Type;
-typedef struct Node Node;
-
 typedef struct Obj Obj;
 
 struct Obj {
@@ -102,6 +105,9 @@ struct Obj {
 
     // function or global variable
     bool isFunction;
+
+    char *InitData;
+
 
     Obj *Params; // function Params
 
