@@ -151,11 +151,7 @@ static Obj *newGVar(char *Name, Type *Ty)
 static char *newUniqueName(void)
 {
   static int Id = 0;
-  char *Buf = calloc(1, 20);
-
-  // format and save string
-  sprintf(Buf, ".L..%d", Id++);
-  return Buf;
+  return format(".L..%d", Id++);
 }
 
 // anonymous global varibale
