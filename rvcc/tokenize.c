@@ -148,24 +148,76 @@ static bool isKeyword(Token *Tok){
     return false;
 }
 
-// read string literals
-static Token *readStringLiteral(char *Start){
-    char *P = Start + 1;
 
-    // skip all `"`
-    for (; *P != '"'; ++P){
-        if (*P == '\n' || *P == '\0'){
-            errorAt(Start, "unclosed string literal");
+// read escaped char
+static int readEscapedChar(char *P){
+  switch (*P) {
+  case 'a': // alarm
+    return '\a';
+  case 'b': // backspace
+    return '\b';
+  case 't': // tab
+    return '\t';
+  case 'n': // new line
+    return '\n';
+  case 'v': // vtab
+    return '\v';
+  case 'f': // new page
+    return '\f';
+  case 'r': // return
+    return '\r';
+  // GNU C extention
+  case 'e': // shift
+    return 27;
+  default: // return raw char
+    return *P;
+  }
+}
+
+// read string literal until end
+static char *stringLiteralEnd(char *P)
+{
+    char *Start = P;
+    for (; *P != '"'; P++) {
+        if (*P == '\n' || *P == '\0')
+        {
+             errorAt(Start, "unclosed string literal");
+        }
+        if (*P == '\\')
+        {
+            P++;
         }
     }
+    return P;
+}
 
-    Token *Tok = newToken(TK_STR, Start, P + 1);
+// read string literals
+static Token *readStringLiteral(char *Start){
+    // get end
+    char *End = stringLiteralEnd(Start + 1);
 
-    // build char[] type
-    Tok->Ty = arrayOf(TyChar, P - Start);
-    Tok->Str = strndup(Start + 1, P - Start - 1);
+  // alloc buffer for the  length of string literal plus one for store
+  char *Buf = calloc(1, End - Start);
+  int Len = 0;
+
+  for (char *P = Start + 1; P < End;) {
+    if (*P == '\\') {
+      Buf[Len++] = readEscapedChar(P + 1);
+      P += 2;
+    } else {
+      Buf[Len++] = *P++;
+    }
+  }
+
+  //  create string literal with double quote
+  Token *Tok = newToken(TK_STR, Start, End + 1);
+
+    // remain for '\0'
+    Tok->Ty = arrayOf(TyChar, Len + 1);
+    Tok->Str = Buf;
     return Tok;
 }
+
 
 // convert 'return' to keyword
 static void convertKeywords(Token *Tok)
