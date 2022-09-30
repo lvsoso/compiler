@@ -150,7 +150,25 @@ static bool isKeyword(Token *Tok){
 
 
 // read escaped char
-static int readEscapedChar(char *P){
+static int readEscapedChar(char **NewPos, char *P){
+    if('0' <= *P && *P <= '7'){
+        // read octonary which length small than 3;
+        // \abc = (a * b + b) * 8 + c
+        int C = *P++ - '0';
+        if ('0' <= *P && *P <= '7')
+        {
+            C = (C << 3) + (*P ++ - '0');
+            if ('0' <= *P && *P <= '7')
+            {
+                C = (C << 3) + (*P ++ - '0');
+            }
+        }
+        *NewPos = P;
+        return C;
+    }
+
+  *NewPos = P + 1;
+
   switch (*P) {
   case 'a': // alarm
     return '\a';
@@ -202,8 +220,7 @@ static Token *readStringLiteral(char *Start){
 
   for (char *P = Start + 1; P < End;) {
     if (*P == '\\') {
-      Buf[Len++] = readEscapedChar(P + 1);
-      P += 2;
+      Buf[Len++] = readEscapedChar(&P, P + 1);
     } else {
       Buf[Len++] = *P++;
     }
