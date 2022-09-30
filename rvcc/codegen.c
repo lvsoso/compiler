@@ -11,6 +11,8 @@ static Obj *CurrentFn;
 
 static void genExpr(Node *Nd);
 
+static void genStmt(Node *Nd);
+
 // code sectionn count
 static int count(void)
 {
@@ -148,6 +150,11 @@ static void genExpr(Node *Nd)
     // 右部是右值，为表达式的值
     genExpr(Nd->RHS);
     store(Nd->Ty);
+    return;
+  case ND_STMT_EXPR:
+    for (Node *N = Nd->Body; N; N = N->Next){
+      genStmt(N);
+    }
     return;
     // 函数调用
   case ND_FUNCALL:

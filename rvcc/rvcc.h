@@ -88,8 +88,9 @@ typedef enum {
     ND_IF,        // "if
     ND_FOR,  // "for" or "while"
     ND_BLOCK,     // { ... }，code block
-    ND_FUNCALL,   // 函数调用
+    ND_FUNCALL,   //function call
     ND_EXPR_STMT, // statement
+    ND_STMT_EXPR, // statement expression
     ND_NUM, // interger
     ND_VAR, // variable
     ND_ADDR,  // get address (&)
@@ -117,7 +118,7 @@ struct Obj {
 
     Obj *Params; // function Params
 
-    Node *Body; // function body
+    Node *Body; // function body or statement expression
     Obj *Locals; // local variable
     int StackSize; // stack size
 };
