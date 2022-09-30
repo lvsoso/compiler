@@ -121,6 +121,23 @@ static bool isIdent1(char C)
 // [a-zA-Z0-9_]
 static bool isIdent2(char C) { return isIdent1(C) || ('0' <= C && C <= '9'); }
 
+//  return  a hexadecimal number's decimal value
+// hexDigit = [0-9a-fA-F]
+// 16: 0 1 2 3 4 5 6 7 8 9  A  B  C  D  E  F
+// 10: 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+static int fromHex(char C)
+{
+    if ('0' <= C && C <= '9')
+    {
+        return C - '0';
+    }
+    if ('a' <= C && C <= 'f')
+    {
+        return C - 'a' + 10;
+    }
+    return C - 'A' + 10;
+}
+
 // read operator
 static int readPunct(char *Ptr)
 {
@@ -152,7 +169,7 @@ static bool isKeyword(Token *Tok){
 // read escaped char
 static int readEscapedChar(char **NewPos, char *P){
     if('0' <= *P && *P <= '7'){
-        // read octonary which length small than 3;
+        // read octonary number which length small than 3;
         // \abc = (a * b + b) * 8 + c
         int C = *P++ - '0';
         if ('0' <= *P && *P <= '7')
@@ -167,6 +184,23 @@ static int readEscapedChar(char **NewPos, char *P){
         return C;
     }
 
+    if (*P == 'x') {
+        P ++;
+        // is a hexadecimal number
+        if (!isxdigit(*P)){
+             errorAt(P, "invalid hex escape sequence");
+        }
+
+        int C = 0 ;
+        // read hexadecimal  which length small than 3;
+        // \xWXYZ = ((W*16+X)*16+Y)*16+Z
+        for (; isxdigit(*P); P++)
+        {
+            C = (C << 4) + fromHex(*P);
+        }
+        *NewPos = P;
+        return C;
+    }
   *NewPos = P + 1;
 
   switch (*P) {
