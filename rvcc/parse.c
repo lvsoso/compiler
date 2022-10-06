@@ -1,5 +1,24 @@
 #include "rvcc.h"
 
+// local or global variable scope
+typedef struct VarScope VarScope;
+struct VarScope
+{
+  VarScope *Next;
+  char *Name;
+  Obj *Var;
+};
+
+typedef struct Scope Scope;
+struct Scope {
+  Scope *Next;
+  VarScope *Vars;
+};
+
+
+// all scope link
+static Scope *Scp = &(Scope){};
+
 // save local variables
 Obj *Locals;
 // save global variables
@@ -56,31 +75,36 @@ static Node *unary(Token **Rest, Token *Tok);
 static Node *postfix(Token **Rest, Token *Tok);
 static Node *primary(Token **Rest, Token *Tok);
 
+
+// Enter scope
+static void enterScope(void){
+  Scope *S = calloc(1, sizeof(Scope));
+  S->Next = Scp;
+  Scp = S;
+}
+
+
+//  exit scope
+static void leaveScope(void){Scp = Scp->Next;}
+
 // find local variable by name
 static Obj *findVar(Token *Tok)
 {
-  // for-loop locals variable
-  for (Obj *Var = Locals; Var; Var = Var->Next)
+  // find from scope first, deepin first
+  for (Scope *S = Scp; S; S = S->Next)
   {
-    // compare name
-    if (strlen(Var->Name) == Tok->Len &&
-        !strncmp(Tok->Loc, Var->Name, Tok->Len))
+    // for-loop all variable in scope
+    for(VarScope *S2 = S->Vars; S2; S2 = S2 -> Next)
     {
-      return Var;
-    }
-  }
-
-  // for-loop global variable
-  for (Obj *Var = Globals; Var; Var = Var->Next)
-  {
-    if (strlen(Var->Name) == Tok->Len &&
-    !strncmp(Tok->Loc, Var->Name, Tok->Len))
-    {
-      return Var;
+      if(equal(Tok, S2->Name))
+      {
+        return S2->Var;
+      }
     }
   }
   return NULL;
 }
+
 
 // new a node
 static Node *newNode(NodeKind Kind, Token *Tok)
@@ -124,12 +148,26 @@ static Node *newVarNode(Obj *Var, Token *Tok)
   return Nd;
 }
 
+// save variable in current scope
+static VarScope *pushScope(char *Name, Obj *Var)
+{
+  VarScope *S = calloc(1, sizeof(VarScope));
+  S->Name = Name;
+  S->Var = Var;
+
+  // append to the head of linker;
+  S->Next = Scp -> Vars;
+  Scp -> Vars = S;
+  return S;
+}
+
 // new variable
 static Obj *newVar(char *Name, Type *Ty) 
 {
   Obj *Var = calloc(1, sizeof(Obj));
   Var -> Name = Name;
   Var -> Ty = Ty;
+  pushScope(Name, Var);
   return Var;
 }
 
@@ -417,6 +455,9 @@ static Node *compoundStmt(Token **Rest, Token *Tok)
   Node Head = {};
   Node *Cur = &Head;
 
+  // enter new scope
+  enterScope();
+
   // (declaration | stmt)* "}"
   while (!equal(Tok, "}"))
   {
@@ -434,6 +475,9 @@ static Node *compoundStmt(Token **Rest, Token *Tok)
 
     addType(Cur);
   }
+
+  // end current scope
+  leaveScope();
 
   // save {} block in Node's Body;
   Node *Nd = newNode(ND_BLOCK, Tok);
@@ -842,6 +886,8 @@ static Token *function(Token *Tok, Type *BaseTy) {
   // clear locals
   Locals = NULL;
 
+  enterScope();
+
   // handle params
   createParamLVars(Ty->Params);
   Fn->Params = Locals;
@@ -849,6 +895,8 @@ static Token *function(Token *Tok, Type *BaseTy) {
   Tok = skip(Tok, "{");
   Fn->Body = compoundStmt(&Tok, Tok);
   Fn->Locals = Locals;
+
+  leaveScope();
   return Tok;
 }
 
