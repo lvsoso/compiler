@@ -1,5 +1,8 @@
 #include "rvcc.h"
 
+// 输出文件
+static FILE *OutputFile;
+
 // 记录栈深度
 static int Depth;
 
@@ -18,10 +21,10 @@ static void printLn(char *Fmt, ...) {
   va_list VA;
 
   va_start(VA, Fmt);
-  vprintf(Fmt, VA);
+  vfprintf(OutputFile, Fmt, VA);
   va_end(VA);
 
-  printf("\n");
+  fprintf(OutputFile, "\n");
 }
 
 // code sectionn count
@@ -491,7 +494,11 @@ void emitText(Obj *Prog) {
   }
 }
 
-void codegen(Obj *Prog) {
+void codegen(Obj *Prog, FILE *Out) {
+  
+  // 设置目标文件的文件流指针
+  OutputFile = Out;
+
   // 计算局部变量的偏移量
   assignLVarOffsets(Prog);
   // 生成数据
