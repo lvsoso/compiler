@@ -24,7 +24,7 @@ assert(){
     expected="$1"
     input="$2"
 
-    ./rvcc "$input" > tmp.s || exit
+    echo "$input" | ./rvcc - > tmp.s || exit
     # clang-12 -o tmp tmp.s
     riscv64-unknown-elf-gcc -static  -o tmp tmp.s tmp2.o
     

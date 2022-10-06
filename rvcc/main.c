@@ -8,7 +8,7 @@ int main(int Argc, char **Argv)
   }
 
   // parsing argv, generate token stream
-  Token *Tok = tokenize(Argv[1]);
+  Token *Tok = tokenizeFile(Argv[1]);
 
   // parse token stream
   Obj *Prog = parse(Tok);
