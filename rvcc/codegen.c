@@ -116,6 +116,9 @@ static void store(Type *Ty) {
 
 // 生成表达式
 static void genExpr(Node *Nd) {
+  // .loc 文件编号 行号
+  printLn("  .loc 1 %d", Nd->Tok->LineNo);
+
   switch (Nd->Kind) {
   // 加载数字到a0
   case ND_NUM:
@@ -244,6 +247,10 @@ static void genExpr(Node *Nd) {
 }
 
 static void genStmt(Node *Nd) {
+  
+  // .loc 文件编号 行号
+  printLn("  .loc 1 %d", Nd->Tok->LineNo);
+
   switch (Nd->Kind) {
     // if statement
   case ND_IF: {
