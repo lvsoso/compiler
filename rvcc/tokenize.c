@@ -34,7 +34,7 @@ void error(char *Fmt, ...)
 // ouput the position and exit.
 // foo.c:10: x = y + 1;
 //              ^ <error info>
-static void verrorAt(char *Loc, char *Fmt, va_list VA)
+static void verrorAt(int LineNo,  char *Loc, char *Fmt, va_list VA)
 {
     // find line contains loc
     char *Line = Loc;
@@ -52,16 +52,6 @@ static void verrorAt(char *Loc, char *Fmt, va_list VA)
     while (*End != '\n')
     {
         End++;
-    }
-
-    // get lineno
-    int LineNo = 1;
-    for (char *P = CurrentInput; P < Line; P++)
-    {
-        if (*P == '\n')
-        {
-            LineNo++;
-        }
     }
 
     // 输出 文件名:错误行
@@ -84,9 +74,17 @@ static void verrorAt(char *Loc, char *Fmt, va_list VA)
 // 字符解析出错
 void errorAt(char *Loc, char *Fmt, ...)
 {
+    int LineNo = 1;
+    for (char *P = CurrentInput; P < Loc; P ++)
+    {
+        if(*P == '\n')
+        {
+            LineNo ++;
+        }
+    }
     va_list VA;
     va_start(VA, Fmt);
-    verrorAt(Loc, Fmt, VA);
+    verrorAt(LineNo,  Loc, Fmt, VA);
 }
 
 // Tok解析出错
@@ -94,7 +92,7 @@ void errorTok(Token *Tok, char *Fmt, ...)
 {
     va_list VA;
     va_start(VA, Fmt);
-    verrorAt(Tok->Loc, Fmt, VA);
+    verrorAt(Tok->LineNo, Tok->Loc, Fmt, VA);
     exit(-1);
 }
 
@@ -332,6 +330,23 @@ static void convertKeywords(Token *Tok)
     }
 }
 
+// add lineno for all token
+static void addLineNumbers(Token *Tok)
+{
+    char *P = CurrentInput;
+    int N = 1;
+
+    do {
+        if(P == Tok->Loc){
+            Tok -> LineNo = N;
+            Tok = Tok->Next;
+        }
+        if (*P == '\n'){
+            N++;
+            }
+    }while (*P++);
+}
+
 // 终结符解析, 文件名，文件内容
 Token *tokenize(char *Filename, char *P)
 {
@@ -427,6 +442,9 @@ Token *tokenize(char *Filename, char *P)
     // end of the parse
     Cur->Next = newToken(TK_EOF, P, P);
 
+    // add lineno for all token
+    addLineNumbers(Head.Next);
+    
     // mark all keyword token as KEYWORD
     convertKeywords(Head.Next);
 

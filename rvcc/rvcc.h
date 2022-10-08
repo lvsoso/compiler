@@ -53,6 +53,8 @@ struct Token
     int Len;
     Type *Ty;
     char *Str;
+
+    int LineNo; // 行号
 };
 
 
