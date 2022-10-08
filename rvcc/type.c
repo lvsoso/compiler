@@ -102,6 +102,12 @@ void addType(Node *Nd)
     case ND_VAR:
         Nd->Ty = Nd->Var->Ty;
         return;
+
+    // 将节点类型设为 右部的类型?
+    case ND_COMMA:
+        Nd->Ty = Nd->RHS->Ty;
+        return;
+
     // 将节点类型设为 指针，并指向左部的类型
     case ND_ADDR:
         if (Nd->LHS->Ty->Kind == TY_ARRAY)

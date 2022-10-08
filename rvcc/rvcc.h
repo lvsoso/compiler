@@ -87,6 +87,7 @@ typedef enum {
     ND_LT,  // <
     ND_LE,  // <=
     ND_ASSIGN, // assign variable's value
+    ND_COMMA,     // , 
     ND_RETURN, // return
     ND_IF,        // "if
     ND_FOR,  // "for" or "while"

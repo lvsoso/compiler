@@ -84,6 +84,12 @@ static void genAddr(Node *Nd) {
   case ND_DEREF:
     genExpr(Nd->LHS);
     return;
+
+  case ND_COMMA:
+    genExpr(Nd->LHS);
+    genAddr(Nd->RHS);
+    return;
+
   default:
     errorTok(Nd->Tok, "not an lvalue");
   }
