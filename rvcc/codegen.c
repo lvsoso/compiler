@@ -17,7 +17,8 @@ static void genExpr(Node *Nd);
 static void genStmt(Node *Nd);
 
 // output string and newline
-static void printLn(char *Fmt, ...) {
+static void printLn(char *Fmt, ...)
+{
   va_list VA;
 
   va_start(VA, Fmt);
@@ -28,7 +29,8 @@ static void printLn(char *Fmt, ...) {
 }
 
 // code sectionn count
-static int count(void) {
+static int count(void)
+{
   static int I = 1;
   return I++;
 }
@@ -37,7 +39,8 @@ static int count(void) {
 // sp为栈指针，栈反向向下增长，64位下，8个字节为一个单位，所以sp-8
 // 当前栈指针的地址就是sp，将a0的值压入栈
 // 不使用寄存器存储的原因是因为需要存储的值的数量是变化的。
-static void push(void) {
+static void push(void)
+{
   printLn("  # 压栈，将a0的值存入栈顶");
   // sp  = sp - 8
   printLn("  addi sp, sp, -8");
@@ -47,7 +50,8 @@ static void push(void) {
 }
 
 // 弹栈，将sp指向的地址的值，弹出到a1
-static void pop(char *Reg) {
+static void pop(char *Reg)
+{
   printLn("  # 弹栈，将栈顶的值存入%s", Reg);
   // reg = pos[sp+0]
   printLn("  ld %s, 0(sp)", Reg);
@@ -57,21 +61,27 @@ static void pop(char *Reg) {
 }
 
 // align N times to the 'Align'
-static int alignTo(int N, int Align) {
+static int alignTo(int N, int Align)
+{
   // (0,Align]
   return (N + Align - 1) / Align * Align;
 }
 
 // get variables address
-static void genAddr(Node *Nd) {
-  switch (Nd->Kind) {
+static void genAddr(Node *Nd)
+{
+  switch (Nd->Kind)
+  {
   case ND_VAR:
-    if (Nd->Var->IsLocal) {
+    if (Nd->Var->IsLocal)
+    {
       // 'offset' is compare with 'fp'
       printLn("  # 获取局部变量%s的栈内地址为%d(fp)", Nd->Var->Name,
               Nd->Var->Offset);
       printLn("  addi a0, fp, %d", Nd->Var->Offset);
-    } else {
+    }
+    else
+    {
       printLn("  # 获取全局变量%s的地址", Nd->Var->Name);
       // 获取全局变量的地址
       // 高地址(高20位,31~20位)
@@ -90,42 +100,60 @@ static void genAddr(Node *Nd) {
     genAddr(Nd->RHS);
     return;
 
+  // struct member
+  case ND_MEMBER:
+    genAddr(Nd->LHS);
+    printLn("  # 计算成员变量的地址偏移量");
+    printLn("  addi a0, a0, %d", Nd->Mem->Offset);
+    return;
+
   default:
     errorTok(Nd->Tok, "not an lvalue");
   }
 }
 
 // load the value a0 point to
-static void load(Type *Ty) {
-  if (Ty->Kind == TY_ARRAY) {
+static void load(Type *Ty)
+{
+  if (Ty->Kind == TY_ARRAY)
+  {
     return;
   }
 
   printLn("  # 读取a0中存放的地址，得到的值存入a0");
-  if (Ty->Size == 1) {
+  if (Ty->Size == 1)
+  {
     printLn("  lb a0, 0(a0)");
-  } else {
+  }
+  else
+  {
     printLn("  ld a0, 0(a0)");
   }
 }
 
 // 将栈顶值(为一个地址)存入a0
-static void store(Type *Ty) {
+static void store(Type *Ty)
+{
   pop("a1");
   printLn("  # 将a0的值，写入到a1中存放的地址");
-  if (Ty->Size == 1) {
+  if (Ty->Size == 1)
+  {
     printLn("  sb a0, 0(a1)");
-  } else {
+  }
+  else
+  {
     printLn("  sd a0, 0(a1)");
   }
 };
 
 // 生成表达式
-static void genExpr(Node *Nd) {
+static void genExpr(Node *Nd)
+{
   // .loc 文件编号 行号
   printLn("  .loc 1 %d", Nd->Tok->LineNo);
 
-  switch (Nd->Kind) {
+  switch (Nd->Kind)
+  {
   // 加载数字到a0
   case ND_NUM:
     printLn("  # 将%d加载到a0中", Nd->Val);
@@ -141,6 +169,7 @@ static void genExpr(Node *Nd) {
     return;
   // 变量
   case ND_VAR:
+  case ND_MEMBER:
     // 计算出变量的地址，然后存入a0
     genAddr(Nd);
     // 访问a0地址中存储的数据，存入到a0当中
@@ -164,15 +193,18 @@ static void genExpr(Node *Nd) {
     store(Nd->Ty);
     return;
   case ND_STMT_EXPR:
-    for (Node *N = Nd->Body; N; N = N->Next) {
+    for (Node *N = Nd->Body; N; N = N->Next)
+    {
       genStmt(N);
     }
     return;
     // 函数调用
-  case ND_FUNCALL: {
+  case ND_FUNCALL:
+  {
     int NArgs = 0;
 
-    for (Node *Arg = Nd->Args; Arg; Arg = Arg->Next) {
+    for (Node *Arg = Nd->Args; Arg; Arg = Arg->Next)
+    {
       genExpr(Arg);
       push();
       NArgs++;
@@ -199,7 +231,8 @@ static void genExpr(Node *Nd) {
   pop("a1");
 
   // 生成各个二叉树节点
-  switch (Nd->Kind) {
+  switch (Nd->Kind)
+  {
   case ND_ADD: // + a0=a0+a1
     printLn("  # a0+a1，结果写入a0");
     printLn("  add a0, a0, a1");
@@ -252,14 +285,17 @@ static void genExpr(Node *Nd) {
   errorTok(Nd->Tok, "invalid expression");
 }
 
-static void genStmt(Node *Nd) {
-  
+static void genStmt(Node *Nd)
+{
+
   // .loc 文件编号 行号
   printLn("  .loc 1 %d", Nd->Tok->LineNo);
 
-  switch (Nd->Kind) {
+  switch (Nd->Kind)
+  {
     // if statement
-  case ND_IF: {
+  case ND_IF:
+  {
     // code section count
     int C = count();
 
@@ -298,12 +334,14 @@ static void genStmt(Node *Nd) {
   }
 
   // gen for-loop or while statement
-  case ND_FOR: {
+  case ND_FOR:
+  {
     // code section count
     int C = count();
     printLn("\n# =====循环语句%d===============", C);
 
-    if (Nd->Init) {
+    if (Nd->Init)
+    {
       // generate init statement
       printLn("\n# Init语句%d", C);
       genStmt(Nd->Init);
@@ -315,7 +353,8 @@ static void genStmt(Node *Nd) {
 
     // handle for-loop condition
     printLn("# Cond表达式%d", C);
-    if (Nd->Cond) {
+    if (Nd->Cond)
+    {
       // generate condition loop statement
 
       genExpr(Nd->Cond);
@@ -329,7 +368,8 @@ static void genStmt(Node *Nd) {
     printLn("\n# Then语句%d", C);
     genStmt(Nd->Then);
     // handle increase
-    if (Nd->Inc) {
+    if (Nd->Inc)
+    {
       printLn("\n# Inc语句%d", C);
       genExpr(Nd->Inc);
     }
@@ -370,15 +410,19 @@ static void genStmt(Node *Nd) {
   errorTok(Nd->Tok, "invalid statement");
 }
 // calculate the variable offset from the 'Locals'
-static void assignLVarOffsets(Obj *Prog) {
-  for (Obj *Fn = Prog; Fn; Fn = Fn->Next) {
-    if (!Fn->isFunction) {
+static void assignLVarOffsets(Obj *Prog)
+{
+  for (Obj *Fn = Prog; Fn; Fn = Fn->Next)
+  {
+    if (!Fn->isFunction)
+    {
       continue;
     }
 
     int Offset = 0;
     // for-loop local variables
-    for (Obj *Var = Fn->Locals; Var; Var = Var->Next) {
+    for (Obj *Var = Fn->Locals; Var; Var = Var->Next)
+    {
 
       // assign 'size' bytes to each variable
       Offset += Var->Ty->Size;
@@ -391,26 +435,32 @@ static void assignLVarOffsets(Obj *Prog) {
   }
 }
 
-static void emitData(Obj *Prog) {
-  for (Obj *Var = Prog; Var; Var = Var->Next) {
+static void emitData(Obj *Prog)
+{
+  for (Obj *Var = Prog; Var; Var = Var->Next)
+  {
     if (Var->isFunction)
       continue;
 
     printLn("  # 数据段标签");
     printLn("  .data");
     // judge if have the initial data
-    if (Var->InitData) {
+    if (Var->InitData)
+    {
       printLn("%s:", Var->Name);
       // show string content
       printLn("  # 字符串字面量");
-      for (int I = 0; I < Var->Ty->Size; ++I) {
+      for (int I = 0; I < Var->Ty->Size; ++I)
+      {
         char C = Var->InitData[I];
         if (isprint(C))
           printLn("  .byte %d\t# %c", C, C);
         else
           printLn("  .byte %d", C);
       }
-    } else {
+    }
+    else
+    {
       printLn("  # 全局段%s", Var->Name);
       printLn("  .globl %s", Var->Name);
       printLn("%s:", Var->Name);
@@ -421,12 +471,15 @@ static void emitData(Obj *Prog) {
 }
 
 // code gen entry function
-void emitText(Obj *Prog) {
+void emitText(Obj *Prog)
+{
   assignLVarOffsets(Prog);
 
   // 为每个函数单独生成代码
-  for (Obj *Fn = Prog; Fn; Fn = Fn->Next) {
-    if (!Fn->isFunction) {
+  for (Obj *Fn = Prog; Fn; Fn = Fn->Next)
+  {
+    if (!Fn->isFunction)
+    {
       continue;
     }
 
@@ -468,11 +521,15 @@ void emitText(Obj *Prog) {
     printLn("  addi sp, sp, -%d", Fn->StackSize);
 
     int I = 0;
-    for (Obj *Var = Fn->Params; Var; Var = Var->Next) {
+    for (Obj *Var = Fn->Params; Var; Var = Var->Next)
+    {
       printLn("  # 将%s寄存器的值存入%s的栈地址", ArgReg[I], Var->Name);
-      if (Var->Ty->Size == 1) {
+      if (Var->Ty->Size == 1)
+      {
         printLn("  sb %s, %d(fp)", ArgReg[I++], Var->Offset);
-      } else {
+      }
+      else
+      {
         printLn("  sd %s, %d(fp)", ArgReg[I++], Var->Offset);
       }
     }
@@ -507,8 +564,9 @@ void emitText(Obj *Prog) {
   }
 }
 
-void codegen(Obj *Prog, FILE *Out) {
-  
+void codegen(Obj *Prog, FILE *Out)
+{
+
   // 设置目标文件的文件流指针
   OutputFile = Out;
 

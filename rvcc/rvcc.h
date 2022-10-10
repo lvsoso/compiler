@@ -19,6 +19,7 @@
 
 typedef struct Type Type;
 typedef struct Node Node;
+typedef struct Member Member;
 
 //
 // 字符串
@@ -88,6 +89,7 @@ typedef enum {
     ND_LE,  // <=
     ND_ASSIGN, // assign variable's value
     ND_COMMA,     // , 
+    ND_MEMBER,    // . struct memeber access
     ND_RETURN, // return
     ND_IF,        // "if
     ND_FOR,  // "for" or "while"
@@ -152,6 +154,10 @@ struct  Node
     // code block
     Node *Body;
     
+    // struct member access
+    Member *Mem;
+
+
     // 函数调用
     char *FuncName; // 函数名
     Node *Args;     // 函数参数
@@ -173,6 +179,7 @@ typedef enum {
     TY_PTR, // pointer
     TY_FUNC, // function
     TY_ARRAY, // array
+    TY_STRUCT, // struct
 } TypeKind;
 
 struct Type {
@@ -182,8 +189,11 @@ struct Type {
 
     Token* Name; // type's name, veriable's name; function's name
 
-  // array
-  int ArrayLen; // len of array, count of the elements
+    // array
+    int ArrayLen; // len of array, count of the elements
+  
+    // struct
+    Member *Mems;
 
     // type of function return
     Type *ReturnTy; 
@@ -191,6 +201,14 @@ struct Type {
     Type *Params; //
 
     Type *Next;
+};
+
+// struct member
+struct Member {
+    Member *Next; // next member
+    Type *Ty; // type
+    Token *Name; // name
+    int Offset; // offset
 };
 
 extern Type *TyInt;
