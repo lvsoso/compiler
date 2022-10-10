@@ -427,6 +427,9 @@ static void assignLVarOffsets(Obj *Prog)
       // assign 'size' bytes to each variable
       Offset += Var->Ty->Size;
 
+     // align variable
+      Offset = alignTo(Offset, Var->Ty->Align);
+
       // set the offset for each variable, is the addr in the stack.
       Var->Offset = -Offset;
     }
