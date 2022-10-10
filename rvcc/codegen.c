@@ -61,7 +61,7 @@ static void pop(char *Reg)
 }
 
 // align N times to the 'Align'
-static int alignTo(int N, int Align)
+int alignTo(int N, int Align)
 {
   // (0,Align]
   return (N + Align - 1) / Align * Align;

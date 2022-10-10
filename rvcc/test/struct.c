@@ -29,6 +29,10 @@ int main(){
   ASSERT(9, ({ struct {char a; int b;} x; sizeof(x); }));
   ASSERT(0, ({ struct {} x; sizeof(x); }));
 
+  // [50] 对齐结构体成员变量
+  ASSERT(16, ({ struct {char a; int b;} x; sizeof(x); }));
+  ASSERT(16, ({ struct {int a; char b;} x; sizeof(x); }));
+  
   printf("OK\n");
   return 0;
 }

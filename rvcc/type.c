@@ -2,9 +2,18 @@
 
 // {TY_INT}构造了一个数据结构，(Type)强制类型转换为struct，然后&取地址
 // 全局变量TyInt，用来将Type赋值为int类型
-Type *TyInt = &(Type){TY_INT, 8};
+Type *TyInt = &(Type){TY_INT, 8, 8};
 
-Type *TyChar = &(Type){TY_CHAR, 1};
+Type *TyChar = &(Type){TY_CHAR, 1, 1};
+
+
+static Type *newType(TypeKind Kind, int Size, int Align){
+    Type *Ty = calloc(1, sizeof(Type));
+    Ty->Kind = Kind;
+    Ty->Size = Size;
+    Ty->Align = Align;
+    return Ty;
+}
 
 // judge the 'type' is integer
 bool isInteger(Type *Ty) { return Ty->Kind == TY_CHAR || Ty->Kind == TY_INT; }
@@ -18,9 +27,7 @@ Type *copyType(Type *Ty) {
 
 Type *pointerTo(Type *Base)
 {
-    Type *Ty = calloc(1, sizeof(Type));
-    Ty->Kind = TY_PTR;
-    Ty->Size = 8;
+    Type *Ty = newType(TY_PTR, 8, 8);
     Ty->Base = Base;
     return Ty;
 }
@@ -36,10 +43,7 @@ Type *funcType(Type *ReturnTy) {
 // build 'array' type, pass the base of array, num of elements
 Type *arrayOf(Type *Base, int Len)
 {
-    Type *Ty = calloc(1, sizeof(Type));
-    Ty->Kind = TY_ARRAY;
-    // sizeof array is sum of all elements size
-    Ty->Size = Base->Size * Len;
+    Type *Ty = newType(TY_ARRAY, Base->Size * Len, Base->Align);
     Ty->Base = Base;
     Ty->ArrayLen = Len;
     return Ty;

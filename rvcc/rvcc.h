@@ -185,6 +185,8 @@ typedef enum {
 struct Type {
     TypeKind Kind; // kind
     int Size; // return by 'sizeof'
+    int Align;     // align
+
     Type *Base; // pointed type
 
     Token* Name; // type's name, veriable's name; function's name
@@ -235,6 +237,8 @@ Type *funcType(Type *ReturnTy);
 //
 // 语义分析与代码生成
 //
+
+int alignTo(int N, int Align);
 
 // 代码生成入口函数
 void codegen(Obj *Prog, FILE *Out);
