@@ -442,7 +442,7 @@ static void assignLVarOffsets(Obj *Prog)
 {
   for (Obj *Fn = Prog; Fn; Fn = Fn->Next)
   {
-    if (!Fn->isFunction)
+    if (!Fn->IsFunction)
     {
       continue;
     }
@@ -470,7 +470,7 @@ static void emitData(Obj *Prog)
 {
   for (Obj *Var = Prog; Var; Var = Var->Next)
   {
-    if (Var->isFunction)
+    if (Var->IsFunction)
       continue;
 
     printLn("  # 数据段标签");
@@ -531,7 +531,7 @@ void emitText(Obj *Prog)
   // 为每个函数单独生成代码
   for (Obj *Fn = Prog; Fn; Fn = Fn->Next)
   {
-    if (!Fn->isFunction)
+    if (!Fn->IsFunction || !Fn->IsDefinition)
     {
       continue;
     }

@@ -121,7 +121,8 @@ struct Obj {
     bool IsLocal; // local or global variable
 
     // function or global variable
-    bool isFunction;
+    bool IsFunction;
+    bool IsDefinition;
 
     char *InitData;
 

@@ -1118,7 +1118,14 @@ static Token *function(Token *Tok, Type *BaseTy) {
   Type *Ty = declarator(&Tok, Tok, BaseTy);
 
   Obj *Fn = newGVar(getIdent(Ty->Name), Ty);
-  Fn -> isFunction = true;
+  Fn -> IsFunction = true;
+
+  Fn->IsDefinition = !consume(&Tok, Tok, ";");
+
+  if (!Fn->IsDefinition)
+  {
+    return Tok;
+  }
 
   // clear locals
   Locals = NULL;
