@@ -197,7 +197,7 @@ static int readPunct(char *Ptr)
 static bool isKeyword(Token *Tok)
 {
     // keyword list
-    static char *KW[] = {"return", "if", "else", "for", "while", "int", "sizeof", "char", "struct", "union", "long",  "short"};
+    static char *KW[] = {"return", "if", "else", "for", "while", "int", "sizeof", "char", "struct", "union", "long",  "short",  "void"};
 
     // for-loop the keyword list and check
     for (int l = 0; l < sizeof(KW) / sizeof(*KW); ++l)

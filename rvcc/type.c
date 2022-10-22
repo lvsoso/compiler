@@ -1,5 +1,7 @@
 #include "rvcc.h"
 
+Type *TyVoid = &(Type){TY_VOID, 1, 1};
+
 // {TY_INT}构造了一个数据结构，(Type)强制类型转换为struct，然后&取地址
 // 全局变量TyInt，用来将Type赋值为int类型
 Type *TyInt = &(Type){TY_INT, 4, 4};
@@ -137,6 +139,11 @@ void addType(Node *Nd)
         if (!Nd->LHS->Ty->Base)
         {
             errorTok(Nd->Tok, "invalid pointer dereference");
+        }
+        // 空指针不能解引用
+        if (Nd->LHS->Ty->Base->Kind == TY_VOID)
+        {
+            errorTok(Nd->Tok, "dereferencing a void pointer");
         }
         Nd->Ty = Nd->LHS->Ty->Base;
         return;

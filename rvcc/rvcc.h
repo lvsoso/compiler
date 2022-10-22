@@ -179,6 +179,7 @@ Obj *parse(Token *Tok);
 
 // types
 typedef enum {
+    TY_VOID,   // void
     TY_CHAR,  // char
     TY_SHORT,  // short
     TY_INT, // int
@@ -220,6 +221,9 @@ struct Member {
     Token *Name; // name
     int Offset; // offset
 };
+
+// 声明全局变量，定义再type.c中
+extern Type *TyVoid;
 
 extern Type *TyInt;
 extern Type *TyShort;
