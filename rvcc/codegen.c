@@ -125,6 +125,10 @@ static void load(Type *Ty)
   {
     printLn("  lb a0, 0(a0)");
   }
+  else if (Ty->Size == 4)
+  {
+    printLn("  lw a0, 0(a0)");
+  }
   else
   {
     printLn("  ld a0, 0(a0)");
@@ -136,9 +140,11 @@ static void store(Type *Ty)
 {
   pop("a1");
 
-  if(Ty->Kind == TY_STRUCT || Ty->Kind == TY_UNION){
+  if (Ty->Kind == TY_STRUCT || Ty->Kind == TY_UNION)
+  {
     printLn("  # 对%s进行赋值", Ty->Kind == TY_STRUCT ? "结构体" : "联合体");
-    for (int I = 0; I < Ty->Size; ++I) {
+    for (int I = 0; I < Ty->Size; ++I)
+    {
       printLn("  lb a2, %d(a0)", I);
       printLn("  sb a2, %d(a1)", I);
     }
@@ -149,6 +155,10 @@ static void store(Type *Ty)
   if (Ty->Size == 1)
   {
     printLn("  sb a0, 0(a1)");
+  }
+  else if (Ty->Size == 4)
+  {
+    printLn("  sw a0, 0(a1)");
   }
   else
   {
@@ -437,7 +447,7 @@ static void assignLVarOffsets(Obj *Prog)
       // assign 'size' bytes to each variable
       Offset += Var->Ty->Size;
 
-     // align variable
+      // align variable
       Offset = alignTo(Offset, Var->Ty->Align);
 
       // set the offset for each variable, is the addr in the stack.
@@ -481,6 +491,25 @@ static void emitData(Obj *Prog)
       printLn("  .zero %d", Var->Ty->Size);
     }
   }
+}
+
+// save integer register's value into stack
+static void storeGeneral(int Reg, int Offset, int Size)
+{
+  printLn("  # 将%s寄存器的值存入%d(fp)的栈地址", ArgReg[Reg], Offset);
+  switch (Size)
+  {
+  case 1:
+    printLn("  sb %s, %d(fp)", ArgReg[Reg], Offset);
+    return;
+  case 4:
+    printLn("  sw %s, %d(fp)", ArgReg[Reg], Offset);
+    return;
+  case 8:
+    printLn("  sd %s, %d(fp)", ArgReg[Reg], Offset);
+    return;
+  }
+  unreachable();
 }
 
 // code gen entry function
@@ -536,15 +565,7 @@ void emitText(Obj *Prog)
     int I = 0;
     for (Obj *Var = Fn->Params; Var; Var = Var->Next)
     {
-      printLn("  # 将%s寄存器的值存入%s的栈地址", ArgReg[I], Var->Name);
-      if (Var->Ty->Size == 1)
-      {
-        printLn("  sb %s, %d(fp)", ArgReg[I++], Var->Offset);
-      }
-      else
-      {
-        printLn("  sd %s, %d(fp)", ArgReg[I++], Var->Offset);
-      }
+      storeGeneral(I++, Var->Offset, Var->Ty->Size);
     }
 
     // 生成语句链表的代码
