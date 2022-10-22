@@ -34,7 +34,7 @@ void error(char *Fmt, ...)
 // ouput the position and exit.
 // foo.c:10: x = y + 1;
 //              ^ <error info>
-static void verrorAt(int LineNo,  char *Loc, char *Fmt, va_list VA)
+static void verrorAt(int LineNo, char *Loc, char *Fmt, va_list VA)
 {
     // find line contains loc
     char *Line = Loc;
@@ -75,16 +75,16 @@ static void verrorAt(int LineNo,  char *Loc, char *Fmt, va_list VA)
 void errorAt(char *Loc, char *Fmt, ...)
 {
     int LineNo = 1;
-    for (char *P = CurrentInput; P < Loc; P ++)
+    for (char *P = CurrentInput; P < Loc; P++)
     {
-        if(*P == '\n')
+        if (*P == '\n')
         {
-            LineNo ++;
+            LineNo++;
         }
     }
     va_list VA;
     va_start(VA, Fmt);
-    verrorAt(LineNo,  Loc, Fmt, VA);
+    verrorAt(LineNo, Loc, Fmt, VA);
 }
 
 // Tok解析出错
@@ -181,9 +181,9 @@ static int readPunct(char *Ptr)
     // multi-bytes
     static char *Kw[] = {"==", "!=", "<=", ">=", "->"};
 
-    for (int l = 0; l < sizeof(Kw)/sizeof(*Kw); ++l)
+    for (int l = 0; l < sizeof(Kw) / sizeof(*Kw); ++l)
     {
-        if(startsWith(Ptr, Kw[l]))
+        if (startsWith(Ptr, Kw[l]))
         {
             return strlen(Kw[l]);
         }
@@ -197,7 +197,9 @@ static int readPunct(char *Ptr)
 static bool isKeyword(Token *Tok)
 {
     // keyword list
-    static char *KW[] = {"return", "if", "else", "for", "while", "int", "sizeof", "char", "struct", "union", "long",  "short",  "void"};
+    static char *KW[] = {"return", "if", "else", "for", "while",
+                         "int", "sizeof", "char", "struct", "union",
+                         "long", "short", "void", "typedef"};
 
     // for-loop the keyword list and check
     for (int l = 0; l < sizeof(KW) / sizeof(*KW); ++l)
@@ -341,15 +343,18 @@ static void addLineNumbers(Token *Tok)
     char *P = CurrentInput;
     int N = 1;
 
-    do {
-        if(P == Tok->Loc){
-            Tok -> LineNo = N;
+    do
+    {
+        if (P == Tok->Loc)
+        {
+            Tok->LineNo = N;
             Tok = Tok->Next;
         }
-        if (*P == '\n'){
+        if (*P == '\n')
+        {
             N++;
-            }
-    }while (*P++);
+        }
+    } while (*P++);
 }
 
 // 终结符解析, 文件名，文件内容
@@ -363,29 +368,29 @@ Token *tokenize(char *Filename, char *P)
     while (*P)
     {
 
-    // 跳过行注释
-    if (startsWith(P, "//"))
-    {
-      P += 2;
-      while (*P != '\n')
-    {
-        P++;
-    }
-      continue;
-    }
-
-    // 跳过块注释
-    if (startsWith(P, "/*"))
-    {
-      // 查找第一个"*/"的位置
-      char *Q = strstr(P + 2, "*/");
-      if (!Q)
+        // 跳过行注释
+        if (startsWith(P, "//"))
         {
-            errorAt(P, "unclosed block comment");
+            P += 2;
+            while (*P != '\n')
+            {
+                P++;
+            }
+            continue;
         }
-      P = Q + 2;
-      continue;
-    }
+
+        // 跳过块注释
+        if (startsWith(P, "/*"))
+        {
+            // 查找第一个"*/"的位置
+            char *Q = strstr(P + 2, "*/");
+            if (!Q)
+            {
+                errorAt(P, "unclosed block comment");
+            }
+            P = Q + 2;
+            continue;
+        }
 
         // 跳过所有空白符如：空格、回车
         if (isspace(*P))
@@ -449,7 +454,7 @@ Token *tokenize(char *Filename, char *P)
 
     // add lineno for all token
     addLineNumbers(Head.Next);
-    
+
     // mark all keyword token as KEYWORD
     convertKeywords(Head.Next);
 
@@ -466,9 +471,11 @@ static char *readFile(char *Path)
     {
         // if filename is '-', read from input;
         FP = stdin;
-    }else{
+    }
+    else
+    {
         FP = fopen(Path, "r");
-        if(!FP)
+        if (!FP)
         {
             // errno为系统最后一次的错误代码
             // strerror以字符串的形式输出错误代码
@@ -482,14 +489,14 @@ static char *readFile(char *Path)
     FILE *Out = open_memstream(&Buf, &BufLen);
 
     // read all file
-    while(true)
+    while (true)
     {
         char Buf2[4096];
 
         // fread read data from file-stream to array;
         // array pointer Buf2, size of element is 1, number of element is 4096
-        int N = fread(Buf2,1,  sizeof(Buf2), FP);
-        if(N == 0)
+        int N = fread(Buf2, 1, sizeof(Buf2), FP);
+        if (N == 0)
         {
             break;
         }
@@ -498,7 +505,8 @@ static char *readFile(char *Path)
         fwrite(Buf2, 1, N, Out);
     }
 
-    if(FP != stdin){
+    if (FP != stdin)
+    {
         fclose(FP);
     }
 
