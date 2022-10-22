@@ -9,10 +9,24 @@ struct VarScope
   Obj *Var;
 };
 
+// struct tag scope
+typedef struct TagScope TagScope;
+struct TagScope {
+  TagScope *Next; // next tag scope
+  char *Name; // scope name
+  Type *Ty;   // scope type
+};
+
+
+
 typedef struct Scope Scope;
 struct Scope {
   Scope *Next;
-  VarScope *Vars;
+  
+  // C有两个域：变量域，结构体标签域
+  VarScope *Vars; // 指向当前域内的变量
+  TagScope *Tags; // 指向当前域内的结构体标签
+
 };
 
 
@@ -104,6 +118,21 @@ static Obj *findVar(Token *Tok)
         return S2->Var;
       }
     }
+  }
+  return NULL;
+}
+
+// find tag by token
+static Type *findTag(Token *Tok) {
+  for (Scope *S = Scp; S; S = S->Next)
+  {
+      for (TagScope *S2 = S->Tags; S2; S2 = S2->Next)
+      {
+        if (equal(Tok, S2->Name))
+        {
+          return S2->Ty;
+        }
+      }
   }
   return NULL;
 }
@@ -227,6 +256,14 @@ static int getNumber(Token *Tok){
     errorTok(Tok, "expected a number");
   }
   return Tok->Val;
+}
+
+static void pushTagScope(Token *Tok, Type *Ty){
+  TagScope *S = calloc(1, sizeof(TagScope));
+  S->Name = strndup(Tok->Loc, Tok->Len);
+  S->Ty = Ty;
+  S->Next = Scp->Tags;
+  Scp->Tags = S;
 }
 
 // declspec = "char" | "int" | structDecl
@@ -804,12 +841,27 @@ static void structMembers(Token **Rest, Token *Tok,  Type *Ty) {
 
 // structDecl = "{" structMembers
 static Type *structDecl(Token **Rest, Token *Tok) {
-  Tok = skip(Tok, "{");
+
+  // read struct tag
+  Token *Tag = NULL;
+  if (Tok->Kind == TK_IDENT) {
+    Tag = Tok;
+    Tok = Tok->Next;
+  }
+
+  if (Tag && !equal(Tok, "{")) {
+    Type *Ty = findTag(Tag);
+    if (!Ty){
+        errorTok(Tag, "unknown struct type");
+    }
+    *Rest = Tok;
+    return Ty;
+  }
 
   // calloc a struct
   Type *Ty = calloc(1, sizeof(Type));
   Ty->Kind = TY_STRUCT;
-  structMembers(Rest, Tok, Ty);
+  structMembers(Rest, Tok->Next, Ty);
   Ty->Align = 1;
 
   // caculate struct emember's offset
@@ -826,6 +878,11 @@ static Type *structDecl(Token **Rest, Token *Tok) {
       
   }
   Ty->Size = alignTo(Offset, Ty->Align);
+
+  if (Tag)
+  {
+    pushTagScope(Tag, Ty);
+  }
 
   return Ty;
 }
