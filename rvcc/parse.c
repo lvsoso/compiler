@@ -11,24 +11,22 @@ struct VarScope
 
 // struct tag and union tag scope
 typedef struct TagScope TagScope;
-struct TagScope {
+struct TagScope
+{
   TagScope *Next; // next tag scope
-  char *Name; // scope name
-  Type *Ty;   // scope type
+  char *Name;     // scope name
+  Type *Ty;       // scope type
 };
 
-
-
 typedef struct Scope Scope;
-struct Scope {
+struct Scope
+{
   Scope *Next;
-  
+
   // C有两个域：变量域，结构体标签域
   VarScope *Vars; // 指向当前域内的变量
   TagScope *Tags; // 指向当前域内的结构体标签
-
 };
-
 
 // all scope link
 static Scope *Scp = &(Scope){};
@@ -36,13 +34,13 @@ static Scope *Scp = &(Scope){};
 // save local variables
 Obj *Locals;
 // save global variables
-Obj *Globals; 
+Obj *Globals;
 
 /// Some "*" just for the pointer
 
 // program = (functionDefinition* | global-variable)*
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-// declspec = "void" | "char" | "short" | "int" | "long" | structDecl | unionDecl
+// declspec = ( "void" | "char" | "short" | "int" | "long" | structDecl | unionDecl)+
 // declarator = "*"* ("(" ident ")" | "(" declarator ")" | ident) typeSuffix
 // typeSuffix = "(" funcParams | "[" num "]" typeSuffix | ε
 // funcParams = (param ("," param)*)? ")"
@@ -77,6 +75,7 @@ Obj *Globals;
 //         | num
 
 // funcall = ident "(" (assign ("," assign)*)? ")"
+static bool isTypename(Token *Tok);
 static Type *declspec(Token **Rest, Token *Tok);
 static Type *declarator(Token **Rest, Token *Tok, Type *Ty);
 static Node *declaration(Token **Rest, Token *Tok);
@@ -95,17 +94,16 @@ static Node *unary(Token **Rest, Token *Tok);
 static Node *postfix(Token **Rest, Token *Tok);
 static Node *primary(Token **Rest, Token *Tok);
 
-
 // Enter scope
-static void enterScope(void){
+static void enterScope(void)
+{
   Scope *S = calloc(1, sizeof(Scope));
   S->Next = Scp;
   Scp = S;
 }
 
-
 //  exit scope
-static void leaveScope(void){Scp = Scp->Next;}
+static void leaveScope(void) { Scp = Scp->Next; }
 
 // find local variable by name
 static Obj *findVar(Token *Tok)
@@ -114,9 +112,9 @@ static Obj *findVar(Token *Tok)
   for (Scope *S = Scp; S; S = S->Next)
   {
     // for-loop all variable in scope
-    for(VarScope *S2 = S->Vars; S2; S2 = S2 -> Next)
+    for (VarScope *S2 = S->Vars; S2; S2 = S2->Next)
     {
-      if(equal(Tok, S2->Name))
+      if (equal(Tok, S2->Name))
       {
         return S2->Var;
       }
@@ -126,20 +124,20 @@ static Obj *findVar(Token *Tok)
 }
 
 // find tag by token
-static Type *findTag(Token *Tok) {
+static Type *findTag(Token *Tok)
+{
   for (Scope *S = Scp; S; S = S->Next)
   {
-      for (TagScope *S2 = S->Tags; S2; S2 = S2->Next)
+    for (TagScope *S2 = S->Tags; S2; S2 = S2->Next)
+    {
+      if (equal(Tok, S2->Name))
       {
-        if (equal(Tok, S2->Name))
-        {
-          return S2->Ty;
-        }
+        return S2->Ty;
       }
+    }
   }
   return NULL;
 }
-
 
 // new a node
 static Node *newNode(NodeKind Kind, Token *Tok)
@@ -191,17 +189,17 @@ static VarScope *pushScope(char *Name, Obj *Var)
   S->Var = Var;
 
   // append to the head of linker;
-  S->Next = Scp -> Vars;
-  Scp -> Vars = S;
+  S->Next = Scp->Vars;
+  Scp->Vars = S;
   return S;
 }
 
 // new variable
-static Obj *newVar(char *Name, Type *Ty) 
+static Obj *newVar(char *Name, Type *Ty)
 {
   Obj *Var = calloc(1, sizeof(Obj));
-  Var -> Name = Name;
-  Var -> Ty = Ty;
+  Var->Name = Name;
+  Var->Ty = Ty;
   pushScope(Name, Var);
   return Var;
 }
@@ -209,7 +207,7 @@ static Obj *newVar(char *Name, Type *Ty)
 // insert new variable to 'locals'
 static Obj *newLVar(char *Name, Type *Ty)
 {
-  Obj* Var = newVar(Name, Ty);
+  Obj *Var = newVar(Name, Ty);
   Var->IsLocal = true;
   // the new one be the head
   Var->Next = Locals;
@@ -218,9 +216,9 @@ static Obj *newLVar(char *Name, Type *Ty)
 }
 
 // add new global variable
-static Obj *newGVar(char *Name, Type *Ty) 
+static Obj *newGVar(char *Name, Type *Ty)
 {
-  Obj* Var = newVar(Name, Ty);
+  Obj *Var = newVar(Name, Ty);
   Var->Next = Globals;
   Globals = Var;
   return Var;
@@ -237,7 +235,8 @@ static char *newUniqueName(void)
 static Obj *newAnonGVar(Type *Ty) { return newGVar(newUniqueName(), Ty); }
 
 // new string literal
-static Obj *newStringLiteral(char *Str, Type *Ty) {
+static Obj *newStringLiteral(char *Str, Type *Ty)
+{
   Obj *Var = newAnonGVar(Ty);
   Var->InitData = Str;
   return Var;
@@ -254,14 +253,17 @@ static char *getIdent(Token *Tok)
 }
 
 // get number
-static int64_t getNumber(Token *Tok){
-  if(Tok->Kind != TK_NUM){
+static int64_t getNumber(Token *Tok)
+{
+  if (Tok->Kind != TK_NUM)
+  {
     errorTok(Tok, "expected a number");
   }
   return Tok->Val;
 }
 
-static void pushTagScope(Token *Tok, Type *Ty){
+static void pushTagScope(Token *Tok, Type *Ty)
+{
   TagScope *S = calloc(1, sizeof(TagScope));
   S->Name = strndup(Tok->Loc, Tok->Len);
   S->Ty = Ty;
@@ -269,62 +271,102 @@ static void pushTagScope(Token *Tok, Type *Ty){
   Scp->Tags = S;
 }
 
-// declspec = "char" | "short" | "int"  | "long" | structDecl | unionDecl
+// declspec = ("char" | "short" | "int"  | "long" | structDecl | unionDecl)+
 // declarator specifier
 static Type *declspec(Token **Rest, Token *Tok)
 {
-  // "void"
-  if (equal(Tok, "void")) {
-    *Rest = Tok->Next;
-    return TyVoid;
+  // type's combination: long + long = 1<<9
+  // long int == int long
+  enum
+  {
+    VOID = 1 << 0,
+    CHAR = 1 << 2,
+    SHORT = 1 << 4,
+    INT = 1 << 6,
+    LONG = 1 << 8,
+    OTHER = 1 << 10,
+  };
+
+  Type *Ty = TyInt;
+  int Counter = 0; //
+
+  while (isTypename(Tok))
+  {
+    if (equal(Tok, "struct") || equal(Tok, "union"))
+    {
+      if (equal(Tok, "struct"))
+      {
+        Ty = structDecl(&Tok, Tok->Next);
+      }
+      else
+      {
+        Ty = unionDecl(&Tok, Tok->Next);
+      }
+      Counter += OTHER;
+      continue;
+    }
+
+    if (equal(Tok, "void"))
+    {
+      Counter += VOID;
+    }
+    else if (equal(Tok, "char"))
+    {
+      Counter += CHAR;
+    }
+    else if (equal(Tok, "short"))
+    {
+      Counter += SHORT;
+    }
+    else if (equal(Tok, "int"))
+    {
+      Counter += INT;
+    }
+    else if (equal(Tok, "long"))
+    {
+      Counter += LONG;
+    }
+    else
+    {
+      unreachable();
+    }
+    switch (Counter)
+    {
+    case VOID:
+      Ty = TyVoid;
+      break;
+    case CHAR:
+      Ty = TyChar;
+      break;
+    case SHORT:
+    case SHORT + INT:
+      Ty = TyShort;
+      break;
+    case INT:
+      Ty = TyInt;
+      break;
+    case LONG:
+    case LONG + INT:
+      Ty = TyLong;
+      break;
+    default:
+      errorTok(Tok, "invalid type");
+    }
+
+    Tok = Tok->Next;
   }
-
-  // "char"
-  if (equal(Tok, "char")) {
-    *Rest = Tok->Next;
-    return TyChar;
-  }
-
-  // "int"
-  if (equal(Tok, "int")) {
-    *Rest = Tok->Next;
-    return TyInt;
-  }
-
-  // "short"
-  if (equal(Tok, "short")) {
-    *Rest = Tok->Next;
-    return TyShort;
-  }
-
-
-  // "long"
-  if (equal(Tok, "long")) {
-    *Rest = Tok->Next;
-    return TyLong;
-  }
-
-
-  // "struct"
-  if(equal(Tok, "struct")){
-    return structDecl(Rest, Tok->Next);
-  }
-
-  // "union"
-  if (equal(Tok, "union")){
-    return unionDecl(Rest, Tok->Next);
-  }
-  
-  errorTok(Tok, "typename expected");
-  return NULL;
+  *Rest = Tok;
+  return Ty;
 }
 // funcParams = (param ("," param)*)? ")"
 // param = declspec declarator
-static Type *funcParams(Token **Rest, Token *Tok, Type *Ty) {
+static Type *funcParams(Token **Rest, Token *Tok, Type *Ty)
+{
   Type Head = {};
   Type *Cur = &Head;
 
-  while (!equal(Tok, ")")) {
+  while (!equal(Tok, ")"))
+  {
     // funcParams = param ("," param)*
     // param = declspec declarator
     if (Cur != &Head)
@@ -345,11 +387,13 @@ static Type *funcParams(Token **Rest, Token *Tok, Type *Ty) {
 }
 
 // typeSuffix = ("(" funcParams? ")")?
-static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty) {
+static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty)
+{
   if (equal(Tok, "("))
     return funcParams(Rest, Tok->Next, Ty);
 
-  if (equal(Tok, "[")) {
+  if (equal(Tok, "["))
+  {
     int Sz = getNumber(Tok->Next);
     Tok = skip(Tok->Next->Next, "]");
     Ty = typeSuffix(Rest, Tok, Ty);
@@ -370,7 +414,8 @@ static Type *declarator(Token **Rest, Token *Tok, Type *Ty)
   }
 
   // "(" declarator ")"
-  if (equal(Tok, "(")) {
+  if (equal(Tok, "("))
+  {
     // log"("的位置
     Token *Start = Tok;
     Type Dummy = {};
@@ -426,7 +471,7 @@ static Node *declaration(Token **Rest, Token *Tok)
     {
       errorTok(Tok, "variable declared void");
     }
-      
+
     Obj *Var = newLVar(getIdent(Ty->Name), Ty);
 
     // 如果不存在"="则为变量声明，不需要生成节点，已经存储在Locals中了
@@ -457,18 +502,19 @@ static Node *declaration(Token **Rest, Token *Tok)
 }
 
 // 判断是否为类型名
-static bool isTypename(Token *Tok) {
+static bool isTypename(Token *Tok)
+{
   static char *Kw[] = {
-    "void", "char", "short", "int", "long", "struct", "union"
-  };
+      "void", "char", "short", "int", "long", "struct", "union"};
 
-  for (int l = 0; l < sizeof(Kw)/sizeof(*Kw); ++l){
+  for (int l = 0; l < sizeof(Kw) / sizeof(*Kw); ++l)
+  {
     if (equal(Tok, Kw[l]))
     {
       return true;
     }
   }
-    return false;
+  return false;
 }
 
 // stmt = "return" expr ";"
@@ -569,7 +615,7 @@ static Node *compoundStmt(Token **Rest, Token *Tok)
   while (!equal(Tok, "}"))
   {
     // declaration
-   if (isTypename(Tok))
+    if (isTypename(Tok))
     {
       Cur->Next = declaration(&Tok, Tok);
     }
@@ -615,10 +661,11 @@ static Node *expr(Token **Rest, Token *Tok)
 {
   Node *Nd = assign(&Tok, Tok);
 
-  if (equal(Tok, ",")){
+  if (equal(Tok, ","))
+  {
     return newBinary(ND_COMMA, Nd, expr(Rest, Tok->Next), Tok);
   }
-  
+
   *Rest = Tok;
   return Nd;
 }
@@ -741,7 +788,7 @@ static Node *newAdd(Node *LHS, Node *RHS, Token *Tok)
   // ptr + 1
   // 1 ： size of one element
   // need x size
-  RHS = newBinary(ND_MUL, RHS,newNum(LHS->Ty->Base->Size, Tok), Tok);
+  RHS = newBinary(ND_MUL, RHS, newNum(LHS->Ty->Base->Size, Tok), Tok);
   return newBinary(ND_ADD, LHS, RHS, Tok);
 }
 
@@ -867,28 +914,31 @@ static Node *unary(Token **Rest, Token *Tok)
 }
 
 // structMembers = (declspec declarator (","  declarator)* ";")*
-static void structMembers(Token **Rest, Token *Tok,  Type *Ty) {
+static void structMembers(Token **Rest, Token *Tok, Type *Ty)
+{
   Member Head = {};
   Member *Cur = &Head;
 
-  while (!equal(Tok, "}")){
+  while (!equal(Tok, "}"))
+  {
     // declspec
     Type *BaseTy = declspec(&Tok, Tok);
     int First = true;
 
-    while (!consume(&Tok, Tok, ";")) {
-       if (!First)
+    while (!consume(&Tok, Tok, ";"))
+    {
+      if (!First)
       {
-          Tok = skip(Tok, ",");
-        }
-        First = false;
+        Tok = skip(Tok, ",");
+      }
+      First = false;
 
-        Member *Mem = calloc(1, sizeof(Member));
+      Member *Mem = calloc(1, sizeof(Member));
 
-        // declarator
-        Mem -> Ty = declarator(&Tok, Tok, BaseTy);
-        Mem->Name = Mem->Ty->Name;
-        Cur = Cur->Next = Mem;
+      // declarator
+      Mem->Ty = declarator(&Tok, Tok, BaseTy);
+      Mem->Name = Mem->Ty->Name;
+      Cur = Cur->Next = Mem;
     }
   }
 
@@ -897,19 +947,23 @@ static void structMembers(Token **Rest, Token *Tok,  Type *Ty) {
 }
 
 // structUnionDecl = ident? ("{" structMembers)?
-static Type *structUnionDecl(Token **Rest, Token *Tok) {
+static Type *structUnionDecl(Token **Rest, Token *Tok)
+{
 
   // read struct tag
   Token *Tag = NULL;
-  if (Tok->Kind == TK_IDENT) {
+  if (Tok->Kind == TK_IDENT)
+  {
     Tag = Tok;
     Tok = Tok->Next;
   }
 
-  if (Tag && !equal(Tok, "{")) {
+  if (Tag && !equal(Tok, "{"))
+  {
     Type *Ty = findTag(Tag);
-    if (!Ty){
-        errorTok(Tag, "unknown struct type");
+    if (!Ty)
+    {
+      errorTok(Tag, "unknown struct type");
     }
     *Rest = Tok;
     return Ty;
@@ -927,13 +981,15 @@ static Type *structUnionDecl(Token **Rest, Token *Tok) {
 }
 
 // structDecl = structUnionDecl
-static Type *structDecl(Token **Rest, Token *Tok) {
+static Type *structDecl(Token **Rest, Token *Tok)
+{
   Type *Ty = structUnionDecl(Rest, Tok);
   Ty->Kind = TY_STRUCT;
 
   // caculate struct emember's offset
   int Offset = 0;
-  for (Member *Mem = Ty->Mems; Mem; Mem = Mem->Next) {
+  for (Member *Mem = Ty->Mems; Mem; Mem = Mem->Next)
+  {
     Offset = alignTo(Offset, Mem->Ty->Align);
     Mem->Offset = Offset;
     Offset += Mem->Ty->Size;
@@ -942,7 +998,6 @@ static Type *structDecl(Token **Rest, Token *Tok) {
     {
       Ty->Align = Mem->Ty->Align;
     }
-      
   }
   Ty->Size = alignTo(Offset, Ty->Align);
 
@@ -950,25 +1005,30 @@ static Type *structDecl(Token **Rest, Token *Tok) {
 }
 
 // unionDecl = structUnionDecl
-static Type *unionDecl(Token **Rest, Token *Tok) {
+static Type *unionDecl(Token **Rest, Token *Tok)
+{
   Type *Ty = structUnionDecl(Rest, Tok);
   Ty->Kind = TY_UNION;
 
-  for (Member *Mem = Ty->Mems; Mem; Mem = Mem->Next) {
-    if (Ty->Align < Mem->Ty->Align){
+  for (Member *Mem = Ty->Mems; Mem; Mem = Mem->Next)
+  {
+    if (Ty->Align < Mem->Ty->Align)
+    {
       Ty->Align = Mem->Ty->Align;
     }
-    if (Ty->Size < Mem->Ty->Size){
+    if (Ty->Size < Mem->Ty->Size)
+    {
       Ty->Size = Mem->Ty->Size;
     }
   }
-  
+
   Ty->Size = alignTo(Ty->Size, Ty->Align);
   return Ty;
 }
 
 // get struct member
-static Member *getStructMember(Type *Ty, Token *Tok) {
+static Member *getStructMember(Type *Ty, Token *Tok)
+{
   for (Member *Mem = Ty->Mems; Mem; Mem = Mem->Next)
     if (Mem->Name->Len == Tok->Len &&
         !strncmp(Mem->Name->Loc, Tok->Loc, Tok->Len))
@@ -977,12 +1037,14 @@ static Member *getStructMember(Type *Ty, Token *Tok) {
   return NULL;
 }
 
-//build struct member node
-static Node *structRef(Node *LHS, Token *Tok) {
+// build struct member node
+static Node *structRef(Node *LHS, Token *Tok)
+{
   addType(LHS);
-if (LHS->Ty->Kind != TY_STRUCT && LHS->Ty->Kind != TY_UNION){
-  errorTok(LHS->Tok, "not a struct nor a union");
-}
+  if (LHS->Ty->Kind != TY_STRUCT && LHS->Ty->Kind != TY_UNION)
+  {
+    errorTok(LHS->Tok, "not a struct nor a union");
+  }
 
   Node *Nd = newUnary(ND_MEMBER, LHS, Tok);
   Nd->Mem = getStructMember(LHS->Ty, Tok);
@@ -990,14 +1052,16 @@ if (LHS->Ty->Kind != TY_STRUCT && LHS->Ty->Kind != TY_UNION){
 }
 
 // postfix = primary ("[" expr "]" | "." ident)* | "->" ident)*
-static  Node* postfix(Token **Rest, Token *Tok)
+static Node *postfix(Token **Rest, Token *Tok)
 {
   // primary
   Node *Nd = primary(&Tok, Tok);
 
   // ("[" expr "]")*
-  while (true) {
-    if (equal(Tok, "[")) {
+  while (true)
+  {
+    if (equal(Tok, "["))
+    {
       // x[y] 等价于 *(x+y)
       Token *Start = Tok;
       Node *Idx = expr(&Tok, Tok->Next);
@@ -1007,14 +1071,16 @@ static  Node* postfix(Token **Rest, Token *Tok)
     }
 
     // "." ident
-    if (equal(Tok, ".")) {
+    if (equal(Tok, "."))
+    {
       Nd = structRef(Nd, Tok->Next);
       Tok = Tok->Next->Next;
       continue;
     }
 
     // "->" ident
-    if(equal(Tok, "->")){
+    if (equal(Tok, "->"))
+    {
       // x -> y  ==  (*x).y
       Nd = newUnary(ND_DEREF, Nd, Tok);
       Nd = structRef(Nd, Tok->Next);
@@ -1060,8 +1126,9 @@ static Node *funCall(Token **Rest, Token *Tok)
 static Node *primary(Token **Rest, Token *Tok)
 {
   // "(" "{" stmt + "}" ")"
-  if (equal(Tok, "(") && equal(Tok->Next, "{")){
-    
+  if (equal(Tok, "(") && equal(Tok->Next, "{"))
+  {
+
     Node *Nd = newNode(ND_STMT_EXPR, Tok);
     Nd->Body = compoundStmt(&Tok, Tok->Next->Next)->Body;
     *Rest = skip(Tok, ")");
@@ -1074,9 +1141,10 @@ static Node *primary(Token **Rest, Token *Tok)
     *Rest = skip(Tok, ")");
     return Nd;
   }
-  
+
   // "sizeof" unary
-  if (equal(Tok, "sizeof")) {
+  if (equal(Tok, "sizeof"))
+  {
     Node *Nd = unary(Rest, Tok->Next);
     addType(Nd);
     return newNum(Nd->Ty->Size, Tok);
@@ -1105,12 +1173,13 @@ static Node *primary(Token **Rest, Token *Tok)
   }
 
   // str
-  if (Tok->Kind == TK_STR) {
+  if (Tok->Kind == TK_STR)
+  {
     Obj *Var = newStringLiteral(Tok->Str, Tok->Ty);
     *Rest = Tok->Next;
     return newVarNode(Var, Tok);
   }
-  
+
   // num
   if (Tok->Kind == TK_NUM)
   {
@@ -1125,8 +1194,10 @@ static Node *primary(Token **Rest, Token *Tok)
 
 // add params to the Locals
 // reverse ?
-static void createParamLVars(Type *Param) {
-  if (Param){
+static void createParamLVars(Type *Param)
+{
+  if (Param)
+  {
     createParamLVars(Param->Next);
     // add to local
     newLVar(getIdent(Param->Name), Param);
@@ -1134,11 +1205,12 @@ static void createParamLVars(Type *Param) {
 }
 
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-static Token *function(Token *Tok, Type *BaseTy) {
+static Token *function(Token *Tok, Type *BaseTy)
+{
   Type *Ty = declarator(&Tok, Tok, BaseTy);
 
   Obj *Fn = newGVar(getIdent(Ty->Name), Ty);
-  Fn -> IsFunction = true;
+  Fn->IsFunction = true;
 
   Fn->IsDefinition = !consume(&Tok, Tok, ";");
 
@@ -1171,7 +1243,8 @@ static Token *globalVariable(Token *Tok, Type *Basety)
 
   while (!consume(&Tok, Tok, ";"))
   {
-    if(!First) {
+    if (!First)
+    {
       Tok = skip(Tok, ",");
     }
     First = false;
@@ -1186,16 +1259,15 @@ static Token *globalVariable(Token *Tok, Type *Basety)
 // judge function or global variable
 static bool isFunction(Token *Tok)
 {
-  if(equal(Tok, ";"))
+  if (equal(Tok, ";"))
   {
     return false;
   }
 
-  Type Dummy =  {};
-  Type* Ty = declarator(&Tok, Tok, &Dummy);
+  Type Dummy = {};
+  Type *Ty = declarator(&Tok, Tok, &Dummy);
   return Ty->Kind == TY_FUNC;
 }
-
 
 // syntax parser entry function
 // program = (functionDefinition* | global-variable)*
@@ -1205,10 +1277,11 @@ Obj *parse(Token *Tok)
 
   while (Tok->Kind != TK_EOF)
   {
-    Type* BaseTy = declspec(&Tok, Tok);
-    
+    Type *BaseTy = declspec(&Tok, Tok);
+
     // function
-    if (isFunction(Tok)) {
+    if (isFunction(Tok))
+    {
       Tok = function(Tok, BaseTy);
       continue;
     }
