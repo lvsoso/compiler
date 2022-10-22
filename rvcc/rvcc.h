@@ -180,6 +180,7 @@ typedef enum {
     TY_FUNC, // function
     TY_ARRAY, // array
     TY_STRUCT, // struct
+    TY_UNION, // union
 } TypeKind;
 
 struct Type {

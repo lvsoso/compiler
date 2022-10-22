@@ -9,7 +9,7 @@ struct VarScope
   Obj *Var;
 };
 
-// struct tag scope
+// struct tag and union tag scope
 typedef struct TagScope TagScope;
 struct TagScope {
   TagScope *Next; // next tag scope
@@ -42,7 +42,7 @@ Obj *Globals;
 
 // program = (functionDefinition* | global-variable)*
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-// declspec = "char" | "int" | structDecl
+// declspec = "char" | "int" | structDecl | unionDecl
 // declarator = "*"* ident typeSuffix
 // typeSuffix = "(" funcParams | "[" num "]" typeSuffix | ε
 // funcParams = (param ("," param)*)? ")"
@@ -65,7 +65,9 @@ Obj *Globals;
 // mul = unary ("*" unary | "/" unary)*
 // unary = ("+" | "-" | "*" | "&") unary | postfix
 // structMembers = (declspec declarator (","  declarator)* ";")*
-// structDecl = "{" structMembers
+// structDecl = structUnionDecl
+// unionDecl = structUnionDecl
+// structUnionDecl = ident? ("{" structMembers)?
 // postfix = primary ("[" expr "]" | "." ident)* | "->" ident)*
 // primary =  "(" "{" stmt+ "}" ")"
 //         | "(" expr ")"
@@ -88,6 +90,7 @@ static Node *relational(Token **Rest, Token *Tok);
 static Node *add(Token **Rest, Token *Tok);
 static Node *mul(Token **Rest, Token *Tok);
 static Type *structDecl(Token **Rest, Token *Tok);
+static Type *unionDecl(Token **Rest, Token *Tok);
 static Node *unary(Token **Rest, Token *Tok);
 static Node *postfix(Token **Rest, Token *Tok);
 static Node *primary(Token **Rest, Token *Tok);
@@ -266,7 +269,7 @@ static void pushTagScope(Token *Tok, Type *Ty){
   Scp->Tags = S;
 }
 
-// declspec = "char" | "int" | structDecl
+// declspec = "char" | "int" | structDecl | unionDecl
 // declarator specifier
 static Type *declspec(Token **Rest, Token *Tok)
 {
@@ -285,6 +288,11 @@ static Type *declspec(Token **Rest, Token *Tok)
   // "struct"
   if(equal(Tok, "struct")){
     return structDecl(Rest, Tok->Next);
+  }
+
+  // "union"
+  if (equal(Tok, "union")){
+    return unionDecl(Rest, Tok->Next);
   }
   
   errorTok(Tok, "typename expected");
@@ -411,7 +419,8 @@ static Node *declaration(Token **Rest, Token *Tok)
 
 // 判断是否为类型名
 static bool isTypename(Token *Tok) {
-  return equal(Tok, "char") || equal(Tok, "int")|| equal(Tok, "struct");
+  return equal(Tok, "char") || equal(Tok, "int")|| equal(Tok, "struct")||
+  equal(Tok, "union");
 }
 
 // stmt = "return" expr ";"
@@ -839,8 +848,8 @@ static void structMembers(Token **Rest, Token *Tok,  Type *Ty) {
   Ty->Mems = Head.Next;
 }
 
-// structDecl = "{" structMembers
-static Type *structDecl(Token **Rest, Token *Tok) {
+// structUnionDecl = ident? ("{" structMembers)?
+static Type *structUnionDecl(Token **Rest, Token *Tok) {
 
   // read struct tag
   Token *Tag = NULL;
@@ -864,6 +873,16 @@ static Type *structDecl(Token **Rest, Token *Tok) {
   structMembers(Rest, Tok->Next, Ty);
   Ty->Align = 1;
 
+  if (Tag)
+    pushTagScope(Tag, Ty);
+  return Ty;
+}
+
+// structDecl = structUnionDecl
+static Type *structDecl(Token **Rest, Token *Tok) {
+  Type *Ty = structUnionDecl(Rest, Tok);
+  Ty->Kind = TY_STRUCT;
+
   // caculate struct emember's offset
   int Offset = 0;
   for (Member *Mem = Ty->Mems; Mem; Mem = Mem->Next) {
@@ -879,14 +898,26 @@ static Type *structDecl(Token **Rest, Token *Tok) {
   }
   Ty->Size = alignTo(Offset, Ty->Align);
 
-  if (Tag)
-  {
-    pushTagScope(Tag, Ty);
-  }
-
   return Ty;
 }
 
+// unionDecl = structUnionDecl
+static Type *unionDecl(Token **Rest, Token *Tok) {
+  Type *Ty = structUnionDecl(Rest, Tok);
+  Ty->Kind = TY_UNION;
+
+  for (Member *Mem = Ty->Mems; Mem; Mem = Mem->Next) {
+    if (Ty->Align < Mem->Ty->Align){
+      Ty->Align = Mem->Ty->Align;
+    }
+    if (Ty->Size < Mem->Ty->Size){
+      Ty->Size = Mem->Ty->Size;
+    }
+  }
+  
+  Ty->Size = alignTo(Ty->Size, Ty->Align);
+  return Ty;
+}
 
 // get struct member
 static Member *getStructMember(Type *Ty, Token *Tok) {
@@ -901,8 +932,9 @@ static Member *getStructMember(Type *Ty, Token *Tok) {
 //build struct member node
 static Node *structRef(Node *LHS, Token *Tok) {
   addType(LHS);
-  if (LHS->Ty->Kind != TY_STRUCT)
-    errorTok(LHS->Tok, "not a struct");
+if (LHS->Ty->Kind != TY_STRUCT && LHS->Ty->Kind != TY_UNION){
+  errorTok(LHS->Tok, "not a struct nor a union");
+}
 
   Node *Nd = newUnary(ND_MEMBER, LHS, Tok);
   Nd->Mem = getStructMember(LHS->Ty, Tok);
