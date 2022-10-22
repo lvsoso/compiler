@@ -67,8 +67,9 @@ Obj *Globals;
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
-// mul = unary ("*" unary | "/" unary)*
-// unary = ("+" | "-" | "*" | "&") unary | postfix
+// mul = cast ("*" cast | "/" cast)*
+// cast = "(" typeName ")" cast | unary
+// unary = ("+" | "-" | "*" | "&") cast | postfix
 // structMembers = (declspec declarator (","  declarator)* ";")*
 // structDecl = structUnionDecl
 // unionDecl = structUnionDecl
@@ -98,6 +99,7 @@ static Node *equality(Token **Rest, Token *Tok);
 static Node *relational(Token **Rest, Token *Tok);
 static Node *add(Token **Rest, Token *Tok);
 static Node *mul(Token **Rest, Token *Tok);
+static Node *cast(Token **Rest, Token *Tok);
 static Type *structDecl(Token **Rest, Token *Tok);
 static Type *unionDecl(Token **Rest, Token *Tok);
 static Node *unary(Token **Rest, Token *Tok);
@@ -189,6 +191,17 @@ static Node *newVarNode(Obj *Var, Token *Tok)
 {
   Node *Nd = newNode(ND_VAR, Tok);
   Nd->Var = Var;
+  return Nd;
+}
+// new Convert
+static Node *newCast(Node *Expr, Type *Ty) {
+  addType(Expr);
+
+  Node *Nd = calloc(1, sizeof(Node));
+  Nd->Kind = ND_CAST;
+  Nd->Tok = Expr->Tok;
+  Nd->LHS = Expr;
+  Nd->Ty = copyType(Ty);
   return Nd;
 }
 
@@ -939,28 +952,28 @@ static Node *add(Token **Rest, Token *Tok)
 }
 
 // 解析乘除
-// mul = unary ("*" unary | "/" unary)*
+// mul = cast ("*" cast | "/" cast)*
 static Node *mul(Token **Rest, Token *Tok)
 {
-  Token *Start = Tok;
+  // cast
+  Node *Nd = cast(&Tok, Tok);
 
-  // unary
-  Node *Nd = unary(&Tok, Tok);
-
-  // ("*" unary | "/" unary)*
+  // ("*" cast | "/" cast)*
   while (true)
   {
-    // "*" unary
-    if (equal(Tok, "*"))
-    {
-      Nd = newBinary(ND_MUL, Nd, unary(&Tok, Tok->Next), Start);
+
+    Token *Start = Tok;
+
+
+    // "*" cast
+    if (equal(Tok, "*")) {
+      Nd = newBinary(ND_MUL, Nd, cast(&Tok, Tok->Next), Start);
       continue;
     }
 
-    // "/" unary
-    if (equal(Tok, "/"))
-    {
-      Nd = newBinary(ND_DIV, Nd, unary(&Tok, Tok->Next), Start);
+    // "/" cast
+    if (equal(Tok, "/")) {
+      Nd = newBinary(ND_DIV, Nd, cast(&Tok, Tok->Next), Start);
       continue;
     }
 
@@ -969,24 +982,41 @@ static Node *mul(Token **Rest, Token *Tok)
   }
 }
 
-// unary = ("+" | "-"  | "*" | "&") unary | postfix
+// parse cast
+// cast = "(" typeName ")" cast | unary
+static Node *cast(Token **Rest, Token *Tok) {
+  // cast = "(" typeName ")" cast
+  if (equal(Tok, "(") && isTypename(Tok->Next)) {
+    Token *Start = Tok;
+    Type *Ty = typename(&Tok, Tok->Next);
+    Tok = skip(Tok, ")");
+    Node *Nd = newCast(cast(Rest, Tok), Ty);
+    Nd->Tok = Start;
+    return Nd;
+  }
+
+  // unary
+  return unary(Rest, Tok);
+}
+
+// unary = ("+" | "-"  | "*" | "&") cast | postfix
 static Node *unary(Token **Rest, Token *Tok)
 {
-  // "+" unary
+  // "+" cast
   if (equal(Tok, "+"))
-    return unary(Rest, Tok->Next);
+    return cast(Rest, Tok->Next);
 
-  // "-" unary
+  // "-" cast
   if (equal(Tok, "-"))
-    return newUnary(ND_NEG, unary(Rest, Tok->Next), Tok);
+    return newUnary(ND_NEG, cast(Rest, Tok->Next), Tok);
 
-  // "&" unary
+  // "&" cast
   if (equal(Tok, "&"))
-    return newUnary(ND_ADDR, unary(Rest, Tok->Next), Tok);
+    return newUnary(ND_ADDR, cast(Rest, Tok->Next), Tok);
 
-  // "*" unary
+  // "*" cast
   if (equal(Tok, "*"))
-    return newUnary(ND_DEREF, unary(Rest, Tok->Next), Tok);
+    return newUnary(ND_DEREF, cast(Rest, Tok->Next), Tok);
 
   // postfix
   return postfix(Rest, Tok);

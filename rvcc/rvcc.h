@@ -105,6 +105,7 @@ typedef enum {
     ND_VAR, // variable
     ND_ADDR,  // get address (&)
     ND_DEREF,  // dereference (*)
+    ND_CAST,      //  type convert
 } NodeKind;
 
 // AST binary tree's node
