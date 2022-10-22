@@ -178,10 +178,15 @@ static int fromHex(char C)
 // read operator
 static int readPunct(char *Ptr)
 {
-    // 2 bytes
-    if (startsWith(Ptr, "==") || startsWith(Ptr, "!=") || startsWith(Ptr, "<=") || startsWith(Ptr, ">="))
+    // multi-bytes
+    static char *Kw[] = {"==", "!=", "<=", ">=", "->"};
+
+    for (int l = 0; l < sizeof(Kw)/sizeof(*Kw); ++l)
     {
-        return 2;
+        if(startsWith(Ptr, Kw[l]))
+        {
+            return strlen(Kw[l]);
+        }
     }
 
     // 1 byte
