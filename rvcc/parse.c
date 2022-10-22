@@ -1219,6 +1219,17 @@ static Node *funCall(Token **Rest, Token *Tok)
   Token *Start = Tok;
   Tok = Tok->Next->Next;
 
+  // find function name
+  VarScope *S = findVar(Start);
+  if (!S){
+    errorTok(Start, "implicit declaration of a function");
+  }
+  if (!S->Var || S->Var->Ty->Kind != TY_FUNC){
+    errorTok(Start, "not a function");
+  }
+
+  Type *Ty = S->Var->Ty->ReturnTy;
+
   Node Head = {};
   Node *Cur = &Head;
 
