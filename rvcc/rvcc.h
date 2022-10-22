@@ -179,6 +179,7 @@ Obj *parse(Token *Tok);
 // types
 typedef enum {
     TY_CHAR,  // char
+    TY_SHORT,  // short
     TY_INT, // int
     TY_LONG,   // long
     TY_PTR, // pointer
@@ -220,6 +221,7 @@ struct Member {
 };
 
 extern Type *TyInt;
+extern Type *TyShort;
 extern Type *TyChar;
 extern Type *TyLong;
 
