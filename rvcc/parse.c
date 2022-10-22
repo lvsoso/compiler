@@ -42,7 +42,7 @@ Obj *Globals;
 
 // program = (functionDefinition* | global-variable)*
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-// declspec = "char" | "int" | structDecl | unionDecl
+// declspec = "char" | "int" | "long" | structDecl | unionDecl
 // declarator = "*"* ident typeSuffix
 // typeSuffix = "(" funcParams | "[" num "]" typeSuffix | ε
 // funcParams = (param ("," param)*)? ")"
@@ -168,7 +168,7 @@ static Node *newBinary(NodeKind Kind, Node *LHS, Node *RHS, Token *Tok)
 }
 
 //  new a number node
-static Node *newNum(int Val, Token *Tok)
+static Node *newNum(int64_t Val, Token *Tok)
 {
   Node *Nd = newNode(ND_NUM, Tok);
   Nd->Val = Val;
@@ -254,7 +254,7 @@ static char *getIdent(Token *Tok)
 }
 
 // get number
-static int getNumber(Token *Tok){
+static int64_t getNumber(Token *Tok){
   if(Tok->Kind != TK_NUM){
     errorTok(Tok, "expected a number");
   }
@@ -269,7 +269,7 @@ static void pushTagScope(Token *Tok, Type *Ty){
   Scp->Tags = S;
 }
 
-// declspec = "char" | "int" | structDecl | unionDecl
+// declspec = "char" | "int" | "long" | structDecl | unionDecl
 // declarator specifier
 static Type *declspec(Token **Rest, Token *Tok)
 {
@@ -284,6 +284,13 @@ static Type *declspec(Token **Rest, Token *Tok)
     *Rest = Tok->Next;
     return TyInt;
   }
+
+  // "long"
+  if (equal(Tok, "long")) {
+    *Rest = Tok->Next;
+    return TyLong;
+  }
+
 
   // "struct"
   if(equal(Tok, "struct")){
@@ -419,8 +426,8 @@ static Node *declaration(Token **Rest, Token *Tok)
 
 // 判断是否为类型名
 static bool isTypename(Token *Tok) {
-  return equal(Tok, "char") || equal(Tok, "int")|| equal(Tok, "struct")||
-  equal(Tok, "union");
+  return equal(Tok, "char") || equal(Tok, "int")|| equal(Tok, "long") ||
+         equal(Tok, "struct") || equal(Tok, "union");
 }
 
 // stmt = "return" expr ";"

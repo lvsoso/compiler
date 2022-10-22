@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 //
 // 共用头文件，定义了多个文件间共同使用的函数和数据
@@ -49,7 +50,7 @@ struct Token
     TokenKind Kind;
     Token *Next;
 
-    int Val;
+    int64_t Val; // TK_NUM
     char *Loc; // position
     int Len;
     Type *Ty;
@@ -166,7 +167,7 @@ struct  Node
     Node *Args;     // 函数参数
 
     Obj *Var;      // save ND_VAR type variable
-    int Val; // value of 'ND_NUM' type
+    int64_t Val; // value of 'ND_NUM' type
 };
 
 
@@ -179,6 +180,7 @@ Obj *parse(Token *Tok);
 typedef enum {
     TY_CHAR,  // char
     TY_INT, // int
+    TY_LONG,   // long
     TY_PTR, // pointer
     TY_FUNC, // function
     TY_ARRAY, // array
@@ -219,6 +221,7 @@ struct Member {
 
 extern Type *TyInt;
 extern Type *TyChar;
+extern Type *TyLong;
 
 // judge the 'type' is integer
 bool isInteger(Type *TY);
