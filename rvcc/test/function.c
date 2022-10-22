@@ -41,6 +41,13 @@ int sub_short(short a, short b, short c) {
   return a - b - c;
 }
 
+// [70] 处理返回类型转换
+int g1;
+
+int *g1_ptr() { return &g1; }
+char int_to_char(int x) { return x; }
+
+
 int main() {
   // [25] 支持零参函数定义
   ASSERT(3, ret3());

@@ -38,6 +38,9 @@ typedef struct
 // all scope link
 static Scope *Scp = &(Scope){};
 
+// function that parsing
+static Obj *CurrentFn;
+
 // save local variables
 Obj *Locals;
 // save global variables
@@ -619,8 +622,12 @@ static Node *stmt(Token **Rest, Token *Tok)
   if (equal(Tok, "return"))
   {
     Node *Nd = newNode(ND_RETURN, Tok);
-    Nd->LHS = expr(&Tok, Tok->Next);
+    Node *Exp = expr(&Tok, Tok->Next);
     *Rest = skip(Tok, ";");
+
+    addType(Exp);
+    Nd->LHS = newCast(Exp, CurrentFn->Ty->ReturnTy);
+
     return Nd;
   }
 
@@ -1381,6 +1388,8 @@ static Token *function(Token *Tok, Type *BaseTy)
   {
     return Tok;
   }
+
+  CurrentFn = Fn;
 
   // clear locals
   Locals = NULL;
