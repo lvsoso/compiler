@@ -173,6 +173,8 @@ struct  Node
 };
 
 
+Node *newCast(Node *Expr, Type *Ty);
+
 // 语法解析入口函数
 Obj *parse(Token *Tok);
 

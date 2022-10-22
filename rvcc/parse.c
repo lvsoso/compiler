@@ -186,6 +186,14 @@ static Node *newNum(int64_t Val, Token *Tok)
   return Nd;
 }
 
+// new a long int node
+static Node *newLong(int64_t Val, Token *Tok) {
+  Node *Nd = newNode(ND_NUM, Tok);
+  Nd->Val = Val;
+  Nd->Ty = TyLong;
+  return Nd;
+}
+
 // new variable
 static Node *newVarNode(Obj *Var, Token *Tok)
 {
@@ -194,7 +202,7 @@ static Node *newVarNode(Obj *Var, Token *Tok)
   return Nd;
 }
 // new Convert
-static Node *newCast(Node *Expr, Type *Ty) {
+Node *newCast(Node *Expr, Type *Ty) {
   addType(Expr);
 
   Node *Nd = calloc(1, sizeof(Node));
@@ -880,7 +888,8 @@ static Node *newAdd(Node *LHS, Node *RHS, Token *Tok)
   // ptr + 1
   // 1 ： size of one element
   // need x size
-  RHS = newBinary(ND_MUL, RHS, newNum(LHS->Ty->Base->Size, Tok), Tok);
+  // use long type to save pointer
+  RHS = newBinary(ND_MUL, RHS, newLong(LHS->Ty->Base->Size, Tok), Tok);
   return newBinary(ND_ADD, LHS, RHS, Tok);
 }
 
@@ -900,7 +909,8 @@ static Node *newSub(Node *LHS, Node *RHS, Token *Tok)
   // ptr - num
   if (LHS->Ty->Base && isInteger(RHS->Ty))
   {
-    RHS = newBinary(ND_MUL, RHS, newNum(LHS->Ty->Base->Size, Tok), Tok);
+  // use long type to save pointer
+    RHS = newBinary(ND_MUL, RHS, newLong(LHS->Ty->Base->Size, Tok), Tok);
     addType(RHS);
     Node *Nd = newBinary(ND_SUB, LHS, RHS, Tok);
 
