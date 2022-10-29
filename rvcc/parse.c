@@ -1235,18 +1235,36 @@ static Node *funCall(Token **Rest, Token *Tok)
     errorTok(Start, "not a function");
   }
 
-  Type *Ty = S->Var->Ty->ReturnTy;
+  // 函数名类型
+  Type *Ty = S->Var->Ty;
 
+  // 函数形参的类型
+  Type *ParamTy = Ty->Params;
+   
   Node Head = {};
   Node *Cur = &Head;
 
   while (!equal(Tok, ")"))
   {
-    if (Cur != &Head)
+    if (Cur != &Head){
       Tok = skip(Tok, ",");
+    }
     // assign
-    Cur->Next = assign(&Tok, Tok);
+    Node *Arg = assign(&Tok, Tok);
+    addType(Arg);
+
+    if(ParamTy){
+      if(ParamTy->Kind == TY_STRUCT || ParamTy->Kind == TY_UNION){
+        errorTok(Arg->Tok, "passing struct or union is not supported yet");
+      }
+
+      // change param type
+      Arg = newCast(Arg, ParamTy);
+      ParamTy = ParamTy->Next;
+    }
+    Cur->Next = Arg;
     Cur = Cur->Next;
+    addType(Cur);
   }
 
   *Rest = skip(Tok, ")");
@@ -1254,6 +1272,11 @@ static Node *funCall(Token **Rest, Token *Tok)
   Node *Nd = newNode(ND_FUNCALL, Start);
   // ident
   Nd->FuncName = strndup(Start->Loc, Start->Len);
+  
+  // function type
+  Nd->FuncType = Ty;
+  // read return value
+  Nd->Ty = Ty->ReturnTy;
   Nd->Args = Head.Next;
   return Nd;
 }

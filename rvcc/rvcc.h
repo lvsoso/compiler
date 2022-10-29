@@ -166,6 +166,7 @@ struct  Node
 
     // 函数调用
     char *FuncName; // 函数名
+    Type *FuncType; // 函数类型
     Node *Args;     // 函数参数
 
     Obj *Var;      // save ND_VAR type variable

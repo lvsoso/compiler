@@ -47,6 +47,10 @@ int g1;
 int *g1_ptr() { return &g1; }
 char int_to_char(int x) { return x; }
 
+// {71] 处理函数实参类型转换
+int div_long(long a, long b) {
+  return a / b;
+}
 
 int main() {
   // [25] 支持零参函数定义
@@ -64,6 +68,15 @@ int main() {
 
   ASSERT(1, ({ sub_char(7, 3, 3); }));
 
+  // [70] 处理返回类型转换
+  g1 = 3;
+
+  ASSERT(3, *g1_ptr());
+  ASSERT(5, int_to_char(261));
+
+  // {71] 处理函数实参类型转换
+  ASSERT(-5, div_long(-10, 2));
+  
   printf("OK\n");
   return 0;
 }
