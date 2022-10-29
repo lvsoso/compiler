@@ -325,6 +325,37 @@ static Token *readStringLiteral(char *Start)
     return Tok;
 }
 
+// read stribg literal
+static Token *readCharLiteral(char *Start) {
+    char *P = Start + 1;
+
+    if (*P == '\0')
+    {
+        errorAt(Start, "unclosed char literal");
+    }
+
+    char C;
+    if (*P == '\\')
+    {
+        C = readEscapedChar(&P, P + 1);
+    }
+    else
+    {
+        C = *P++;
+    }
+    
+    char *End = strchr(P, '\'');
+    if (!End)
+    {
+    errorAt(P, "unclosed char literal");
+    }
+
+    Token *Tok = newToken(TK_NUM, Start, End + 1);
+    Tok->Val = C;
+    return Tok;
+}
+
+
 // convert 'return' to keyword
 static void convertKeywords(Token *Tok)
 {
@@ -420,6 +451,14 @@ Token *tokenize(char *Filename, char *P)
             continue;
         }
 
+        // parser char literals
+        if (*P == '\'') {
+        Cur->Next = readCharLiteral(P);
+        Cur = Cur->Next;
+        P += Cur->Len;
+        continue;
+        }
+        
         // parsing var or keyword
         // [a-zA-Z_][a-zA-Z0-9_]*
         if (isIdent1(*P))
