@@ -146,6 +146,8 @@ void addType(Node *Nd)
         Nd->Ty = TyLong;
         return;
     case ND_NOT:
+    case ND_LOGOR:
+    case ND_LOGAND:
         Nd->Ty = TyInt;
         return;
     case ND_BITNOT:
