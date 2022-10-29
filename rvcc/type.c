@@ -1,6 +1,7 @@
 #include "rvcc.h"
 
 Type *TyVoid = &(Type){TY_VOID, 1, 1};
+Type *TyBool = &(Type){TY_BOOL, 1, 1};
 
 // {TY_INT}构造了一个数据结构，(Type)强制类型转换为struct，然后&取地址
 // 全局变量TyInt，用来将Type赋值为int类型
@@ -22,7 +23,8 @@ static Type *newType(TypeKind Kind, int Size, int Align){
 // judge the 'type' is integer
 bool isInteger(Type *Ty) {
   TypeKind K = Ty->Kind;
-  return K == TY_CHAR || K == TY_SHORT || K == TY_INT || K == TY_LONG;
+  return K == TY_BOOL || K == TY_CHAR || K == TY_SHORT || K == TY_INT ||
+         K == TY_LONG;
 }
 
 // copy type

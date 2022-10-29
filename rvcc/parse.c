@@ -50,7 +50,7 @@ Obj *Globals;
 
 // program = (typedef | functionDefinition* | global-variable)*
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-// declspec = ( "void" | "char" | "short" | "int" | "long"  | "typedef" | structDecl | unionDecl | typedefName)+
+// declspec = ( "void" | "_Bool" | "char" | "short" | "int" | "long"  | "typedef" | structDecl | unionDecl | typedefName)+
 // declarator = "*"* ("(" ident ")" | "(" declarator ")" | ident) typeSuffix
 // typeSuffix = "(" funcParams | "[" num "]" typeSuffix | ε
 // funcParams = (param ("," param)*)? ")"
@@ -315,7 +315,7 @@ static void pushTagScope(Token *Tok, Type *Ty)
   Scp->Tags = S;
 }
 
-// declspec = ("char" | "short" | "int"  | "long" | "typedef" | structDecl | unionDecl| typedefName)+
+// declspec =  ("void" | "_Bool" | "char" | "short" | "int"  | "long" | "typedef" | structDecl | unionDecl| typedefName)+
 // declarator specifier
 static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
 {
@@ -324,11 +324,12 @@ static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
   enum
   {
     VOID = 1 << 0,
-    CHAR = 1 << 2,
-    SHORT = 1 << 4,
-    INT = 1 << 6,
-    LONG = 1 << 8,
-    OTHER = 1 << 10,
+    BOOL = 1 << 2,
+    CHAR = 1 << 4,
+    SHORT = 1 << 6,
+    INT = 1 << 8,
+    LONG = 1 << 10,
+    OTHER = 1 << 12,
   };
 
   Type *Ty = TyInt;
@@ -370,6 +371,10 @@ static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
     {
       Counter += VOID;
     }
+    else if (equal(Tok, "_Bool"))
+    {
+      Counter += BOOL;
+    }
     else if (equal(Tok, "char"))
     {
       Counter += CHAR;
@@ -394,6 +399,9 @@ static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
     {
     case VOID:
       Ty = TyVoid;
+      break;
+    case BOOL:
+      Ty = TyBool;
       break;
     case CHAR:
       Ty = TyChar;
@@ -598,7 +606,7 @@ static Node *declaration(Token **Rest, Token *Tok, Type *BaseTy)
 static bool isTypename(Token *Tok)
 {
   static char *Kw[] = {
-      "void", "char", "short", "int", "long", "struct", "union", "typedef"};
+      "void", "_Bool",  "char", "short", "int", "long", "struct", "union", "typedef"};
 
   for (int l = 0; l < sizeof(Kw) / sizeof(*Kw); ++l)
   {
