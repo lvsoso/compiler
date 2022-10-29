@@ -605,9 +605,13 @@ void emitText(Obj *Prog)
       continue;
     }
 
-    printLn("\n  # 定义全局%s段", Fn->Name);
-    printLn("  .globl %s", Fn->Name);
-
+    if (Fn->IsStatic) {
+      printLn("\n  # 定义局部%s函数", Fn->Name);
+      printLn("  .local %s", Fn->Name);
+    } else {
+      printLn("\n  # 定义全局%s函数", Fn->Name);
+      printLn("  .globl %s", Fn->Name);
+    }
     printLn("  # 代码段标签");
     printLn("  .text");
     printLn("# =====%s段开始===============", Fn->Name);

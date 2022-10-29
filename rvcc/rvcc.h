@@ -124,6 +124,7 @@ struct Obj {
     // function or global variable
     bool IsFunction;
     bool IsDefinition;
+    bool IsStatic;
 
     char *InitData;
 
@@ -184,7 +185,7 @@ Obj *parse(Token *Tok);
 // types
 typedef enum {
     TY_VOID,   // void
-  TY_BOOL,   // _Bool
+    TY_BOOL,   // _Bool
     TY_CHAR,  // char
     TY_SHORT,  // short
     TY_INT, // int

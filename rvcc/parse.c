@@ -36,6 +36,7 @@ struct Scope
 typedef struct
 {
   bool IsTypedef;
+  bool IsStatic; 
 } VarAttr;
 
 // all scope link
@@ -53,7 +54,7 @@ Obj *Globals;
 
 // program = (typedef | functionDefinition* | global-variable)*
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-// declspec = ( "void" | "_Bool" | "char" | "short" | "int" | "long"  | "typedef" | structDecl | unionDecl | typedefName
+// declspec = ( "void" | "_Bool" | "char" | "short" | "int" | "long"  | "typedef"  | "static" | structDecl | unionDecl | typedefName
 //             | enumSpecifier)+
 // enumSpecifier = ident? "{" enumList? "}"
 //                 | ident ("{" enumList? "}")?
@@ -328,7 +329,7 @@ static void pushTagScope(Token *Tok, Type *Ty)
 }
 
 // declspec =  ("void" | "_Bool" | "char" | "short" | "int"  | "long"
-//        | "typedef" | structDecl | unionDecl| typedefName
+//        | "typedef" | "static" | structDecl | unionDecl| typedefName
 //             | enumSpecifier)+
 // declarator specifier
 static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
@@ -351,13 +352,23 @@ static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
 
   while (isTypename(Tok))
   {
-    if (equal(Tok, "typedef"))
+    if (equal(Tok, "typedef") || equal(Tok, "static")) 
     {
       if (!Attr)
       {
         errorTok(Tok, "storage class specifier is not allowed in this context");
       }
-      Attr->IsTypedef = true;
+      if (equal(Tok, "typedef")){
+        Attr->IsTypedef = true;
+      }
+      else{
+        Attr->IsStatic = true;
+      }
+
+      if (Attr->IsTypedef && Attr->IsStatic){
+        errorTok(Tok, "typedef and static may not be used together");
+      }
+
       Tok = Tok->Next;
       continue;
     }
@@ -695,6 +706,7 @@ static bool isTypename(Token *Tok)
       "union",
       "typedef",
       "enum",
+      "static",
   };
 
   for (int l = 0; l < sizeof(Kw) / sizeof(*Kw); ++l)
@@ -1520,7 +1532,7 @@ static void createParamLVars(Type *Param)
 }
 
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-static Token *function(Token *Tok, Type *BaseTy)
+static Token *function(Token *Tok, Type *BaseTy, VarAttr *Attr)
 {
   Type *Ty = declarator(&Tok, Tok, BaseTy);
 
@@ -1528,6 +1540,7 @@ static Token *function(Token *Tok, Type *BaseTy)
   Fn->IsFunction = true;
 
   Fn->IsDefinition = !consume(&Tok, Tok, ";");
+  Fn->IsStatic = Attr->IsStatic;
 
   if (!Fn->IsDefinition)
   {
@@ -1606,7 +1619,7 @@ Obj *parse(Token *Tok)
     // function
     if (isFunction(Tok))
     {
-      Tok = function(Tok, BaseTy);
+      Tok = function(Tok, BaseTy, &Attr);
       continue;
     }
 

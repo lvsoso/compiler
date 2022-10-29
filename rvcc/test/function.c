@@ -56,6 +56,8 @@ int div_long(long a, long b) {
 _Bool bool_fn_add(_Bool x) { return x + 1; }
 _Bool bool_fn_sub(_Bool x) { return x - 1; }
 
+// [75] 支持文件域内函数
+static int static_fn() { return 3; }
 
 int main() {
   // [25] 支持零参函数定义
