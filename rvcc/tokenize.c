@@ -180,7 +180,7 @@ static int readPunct(char *Ptr)
 {
     // multi-bytes
     static char *Kw[] = {"==", "!=", "<=", ">=", "->", "+=", "-=", "*=", "/=",
-     "++", "--"};
+     "++", "--", "%="};
 
     for (int l = 0; l < sizeof(Kw) / sizeof(*Kw); ++l)
     {
