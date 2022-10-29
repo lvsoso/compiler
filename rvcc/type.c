@@ -141,6 +141,9 @@ void addType(Node *Nd)
     case ND_FUNCALL:
         Nd->Ty = TyLong;
         return;
+    case ND_NOT:
+        Nd->Ty = TyInt;
+        return;
     // set variable's type as  Node'type
     case ND_VAR:
         Nd->Ty = Nd->Var->Ty;

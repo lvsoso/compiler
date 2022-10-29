@@ -92,6 +92,7 @@ typedef enum {
     ND_NE,  // !=
     ND_LT,  // <
     ND_LE,  // <=
+    ND_NOT,   // !
     ND_ASSIGN, // assign variable's value
     ND_COMMA,     // , 
     ND_MEMBER,    // . struct memeber access
