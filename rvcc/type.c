@@ -144,6 +144,9 @@ void addType(Node *Nd)
     case ND_NOT:
         Nd->Ty = TyInt;
         return;
+    case ND_BITNOT:
+        Nd->Ty = Nd->LHS->Ty;
+        return;
     // set variable's type as  Node'type
     case ND_VAR:
         Nd->Ty = Nd->Var->Ty;

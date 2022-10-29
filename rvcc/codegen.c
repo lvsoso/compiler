@@ -300,6 +300,12 @@ static void genExpr(Node *Nd)
     // a0=0则置1，否则为0
     printLn("  seqz a0, a0");
     return;
+  case ND_BITNOT:
+    genExpr(Nd->LHS);
+    printLn("  # 按位取反");
+    // 这里的 not a0, a0 为 xori a0, a0, -1 的伪码
+    printLn("  not a0, a0");
+    return;
     // 函数调用
   case ND_FUNCALL:
   {
