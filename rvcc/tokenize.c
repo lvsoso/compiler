@@ -179,7 +179,7 @@ static int fromHex(char C)
 static int readPunct(char *Ptr)
 {
     // multi-bytes
-    static char *Kw[] = {"==", "!=", "<=", ">=", "->"};
+    static char *Kw[] = {"==", "!=", "<=", ">=", "->", "+=", "-=", "*=", "/="};
 
     for (int l = 0; l < sizeof(Kw) / sizeof(*Kw); ++l)
     {
