@@ -234,6 +234,7 @@ struct Type {
 struct Member {
     Member *Next; // next member
     Type *Ty; // type
+    Token *Tok; 
     Token *Name; // name
     int Offset; // offset
 };

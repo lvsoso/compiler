@@ -60,7 +60,8 @@ Obj *Globals;
 //                 | ident ("{" enumList? "}")?
 // enumList = ident ("=" num)? ("," ident ("=" num)?)*
 // declarator = "*"* ("(" ident ")" | "(" declarator ")" | ident) typeSuffix
-// typeSuffix = "(" funcParams | "[" num "]" typeSuffix | ε
+// typeSuffix = "(" funcParams | "[" arrayDimensions | ε
+// arrayDimensions = num? "]" typeSuffix
 // funcParams = (param ("," param)*)? ")"
 // param = declspec declarator
 // compoundStmt =  (typedef | declaration | stmt)* "}"
@@ -108,6 +109,7 @@ Obj *Globals;
 static bool isTypename(Token *Tok);
 static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr);
 static Type *enumSpecifier(Token **Rest, Token *Tok);
+static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty);
 static Type *declarator(Token **Rest, Token *Tok, Type *Ty);
 static Node *declaration(Token **Rest, Token *Tok, Type *BaseTy);
 static Node *compoundStmt(Token **Rest, Token *tok);
@@ -505,18 +507,32 @@ static Type *funcParams(Token **Rest, Token *Tok, Type *Ty)
   return Ty;
 }
 
-// typeSuffix = ("(" funcParams? ")")?
+// arrayDimensions = num? "]" typeSuffix
+static Type *arrayDimensions(Token **Rest, Token *Tok, Type *Ty) {
+  // "[]" empty
+  if (equal(Tok, "]")) {
+    Ty = typeSuffix(Rest, Tok->Next, Ty);
+    return arrayOf(Ty, -1);
+  }
+
+  // have dimension
+  int Sz = getNumber(Tok);
+  Tok = skip(Tok->Next, "]");
+  Ty = typeSuffix(Rest, Tok, Ty);
+  return arrayOf(Ty, Sz);
+}
+
+// typeSuffix = "(" funcParams | "[" arrayDimensions | ε
 static Type *typeSuffix(Token **Rest, Token *Tok, Type *Ty)
 {
-  if (equal(Tok, "("))
+   // "(" funcParams
+  if (equal(Tok, "(")){
     return funcParams(Rest, Tok->Next, Ty);
-
-  if (equal(Tok, "["))
-  {
-    int Sz = getNumber(Tok->Next);
-    Tok = skip(Tok->Next->Next, "]");
-    Ty = typeSuffix(Rest, Tok, Ty);
-    return arrayOf(Ty, Sz);
+  }
+  
+  // "[" arrayDimensions
+  if (equal(Tok, "[")){
+    return arrayDimensions(Rest, Tok->Next, Ty);
   }
 
   *Rest = Tok;
@@ -673,6 +689,11 @@ static Node *declaration(Token **Rest, Token *Tok, Type *BaseTy)
     // declarator
     // get variable's name and type
     Type *Ty = declarator(&Tok, Tok, BaseTy);
+    
+    if (Ty->Size < 0){
+      errorTok(Tok, "variable has incomplete type");
+    }
+
     if (Ty->Kind == TY_VOID)
     {
       errorTok(Tok, "variable declared void");
