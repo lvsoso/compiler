@@ -764,8 +764,17 @@ static Node *stmt(Token **Rest, Token *Tok)
     // "("
     Tok = skip(Tok->Next, "(");
 
+    enterScope();
+
     // exprStmt
-    Nd->Init = exprStmt(&Tok, Tok);
+    if (isTypename(Tok)) {
+      // init variable
+      Type *BaseTy = declspec(&Tok, Tok, NULL);
+      Nd->Init = declaration(&Tok, Tok, BaseTy);
+    } else {
+      // init statement
+      Nd->Init = exprStmt(&Tok, Tok);
+    }
 
     // expr?
     if (!equal(Tok, ";"))
@@ -781,6 +790,9 @@ static Node *stmt(Token **Rest, Token *Tok)
 
     // stmt
     Nd->Then = stmt(Rest, Tok);
+
+    leaveScope();
+    
     return Nd;
   }
 
