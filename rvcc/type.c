@@ -24,7 +24,7 @@ static Type *newType(TypeKind Kind, int Size, int Align){
 bool isInteger(Type *Ty) {
   TypeKind K = Ty->Kind;
   return K == TY_BOOL || K == TY_CHAR || K == TY_SHORT || K == TY_INT ||
-         K == TY_LONG;
+         K == TY_LONG || K == TY_ENUM;
 }
 
 // copy type
@@ -57,6 +57,8 @@ Type *arrayOf(Type *Base, int Len)
     Ty->ArrayLen = Len;
     return Ty;
 }
+
+Type *enumType(void) { return newType(TY_ENUM, 4, 4); }
 
 static Type *getCommonType(Type *Ty1, Type * Ty2){
     if(Ty1->Base){

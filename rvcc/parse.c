@@ -7,10 +7,13 @@ struct VarScope
   VarScope *Next;
   char *Name;
   Obj *Var;
-  Type *Typedef;  
+  Type *Typedef;
+
+  Type *EnumTy;
+  int EnumVal;
 };
 
-// struct tag and union tag scope
+// struct tag and union, enum tag scope
 typedef struct TagScope TagScope;
 struct TagScope
 {
@@ -24,7 +27,7 @@ struct Scope
 {
   Scope *Next;
 
-  // C有两个域：变量域，结构体标签域
+  // C有两个域：变量域(变量,类型别名)，结构体标签（结构体、联合体，枚举）域
   VarScope *Vars; // 指向当前域内的变量
   TagScope *Tags; // 指向当前域内的结构体标签
 };
@@ -32,7 +35,7 @@ struct Scope
 // variable attribute
 typedef struct
 {
-   bool IsTypedef;
+  bool IsTypedef;
 } VarAttr;
 
 // all scope link
@@ -50,7 +53,11 @@ Obj *Globals;
 
 // program = (typedef | functionDefinition* | global-variable)*
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
-// declspec = ( "void" | "_Bool" | "char" | "short" | "int" | "long"  | "typedef" | structDecl | unionDecl | typedefName)+
+// declspec = ( "void" | "_Bool" | "char" | "short" | "int" | "long"  | "typedef" | structDecl | unionDecl | typedefName
+//             | enumSpecifier)+
+// enumSpecifier = ident? "{" enumList? "}"
+//                 | ident ("{" enumList? "}")?
+// enumList = ident ("=" num)? ("," ident ("=" num)?)*
 // declarator = "*"* ("(" ident ")" | "(" declarator ")" | ident) typeSuffix
 // typeSuffix = "(" funcParams | "[" num "]" typeSuffix | ε
 // funcParams = (param ("," param)*)? ")"
@@ -91,6 +98,7 @@ Obj *Globals;
 // funcall = ident "(" (assign ("," assign)*)? ")"
 static bool isTypename(Token *Tok);
 static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr);
+static Type *enumSpecifier(Token **Rest, Token *Tok);
 static Type *declarator(Token **Rest, Token *Tok, Type *Ty);
 static Node *declaration(Token **Rest, Token *Tok, Type *BaseTy);
 static Node *compoundStmt(Token **Rest, Token *tok);
@@ -190,7 +198,8 @@ static Node *newNum(int64_t Val, Token *Tok)
 }
 
 // new a long int node
-static Node *newLong(int64_t Val, Token *Tok) {
+static Node *newLong(int64_t Val, Token *Tok)
+{
   Node *Nd = newNode(ND_NUM, Tok);
   Nd->Val = Val;
   Nd->Ty = TyLong;
@@ -205,7 +214,8 @@ static Node *newVarNode(Obj *Var, Token *Tok)
   return Nd;
 }
 // new Convert
-Node *newCast(Node *Expr, Type *Ty) {
+Node *newCast(Node *Expr, Type *Ty)
+{
   addType(Expr);
 
   Node *Nd = calloc(1, sizeof(Node));
@@ -287,8 +297,10 @@ static char *getIdent(Token *Tok)
 }
 
 // find type name
-static Type *findTypedef (Token *Tok){
-    if (Tok->Kind == TK_IDENT) {
+static Type *findTypedef(Token *Tok)
+{
+  if (Tok->Kind == TK_IDENT)
+  {
     VarScope *S = findVar(Tok);
     if (S)
       return S->Typedef;
@@ -315,7 +327,9 @@ static void pushTagScope(Token *Tok, Type *Ty)
   Scp->Tags = S;
 }
 
-// declspec =  ("void" | "_Bool" | "char" | "short" | "int"  | "long" | "typedef" | structDecl | unionDecl| typedefName)+
+// declspec =  ("void" | "_Bool" | "char" | "short" | "int"  | "long"
+//        | "typedef" | structDecl | unionDecl| typedefName
+//             | enumSpecifier)+
 // declarator specifier
 static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
 {
@@ -337,8 +351,10 @@ static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
 
   while (isTypename(Tok))
   {
-    if (equal(Tok, "typedef")) {
-      if (!Attr){
+    if (equal(Tok, "typedef"))
+    {
+      if (!Attr)
+      {
         errorTok(Tok, "storage class specifier is not allowed in this context");
       }
       Attr->IsTypedef = true;
@@ -347,19 +363,26 @@ static Type *declspec(Token **Rest, Token *Tok, VarAttr *Attr)
     }
     Type *Ty2 = findTypedef(Tok);
 
-    if (equal(Tok, "struct") || equal(Tok, "union")|| Ty2)
-    {
-      if (Counter){
+    if (equal(Tok, "struct") || equal(Tok, "union") || equal(Tok, "enum") ||
+        Ty2) {
+      if (Counter)
+      {
         break;
       }
-        
+
       if (equal(Tok, "struct"))
       {
         Ty = structDecl(&Tok, Tok->Next);
       }
-      else  if (equal(Tok, "union")) {
+      else if (equal(Tok, "union"))
+      {
         Ty = unionDecl(&Tok, Tok->Next);
-      } else {
+      } 
+      else if (equal(Tok, "enum")) {
+        Ty = enumSpecifier(&Tok, Tok->Next);
+      } 
+      else
+      {
         Ty = Ty2;
         Tok = Tok->Next;
       }
@@ -514,15 +537,18 @@ static Type *declarator(Token **Rest, Token *Tok, Type *Ty)
 }
 
 // abstractDeclarator = "*"* ("(" abstractDeclarator ")")? typeSuffix
-static Type *abstractDeclarator(Token **Rest, Token *Tok, Type *Ty) {
-    // "*"*
-  while (equal(Tok, "*")) {
+static Type *abstractDeclarator(Token **Rest, Token *Tok, Type *Ty)
+{
+  // "*"*
+  while (equal(Tok, "*"))
+  {
     Ty = pointerTo(Ty);
     Tok = Tok->Next;
   }
 
   // ("(" abstractDeclarator ")")?
-  if (equal(Tok, "(")) {
+  if (equal(Tok, "("))
+  {
     Token *Start = Tok;
     Type Dummy = {};
     // 使Tok前进到")"后面的位置
@@ -540,13 +566,66 @@ static Type *abstractDeclarator(Token **Rest, Token *Tok, Type *Ty) {
 
 // typeName = declspec abstractDeclarator
 // get type info
-static Type *typename(Token **Rest, Token *Tok) {
+static Type *typename(Token **Rest, Token *Tok) 
+{
   // declspec
   Type *Ty = declspec(&Tok, Tok, NULL);
   // abstractDeclarator
   return abstractDeclarator(Rest, Tok, Ty);
 }
 
+// enumSpecifier = ident? "{" enumList? "}"
+//               | ident ("{" enumList? "}")?
+// enumList      = ident ("=" num)? ("," ident ("=" num)?)*
+static Type *enumSpecifier(Token **Rest, Token *Tok) {
+  Type *Ty = enumType();
+
+  // ident?
+  Token *Tag = NULL;
+  if (Tok->Kind == TK_IDENT) {
+    Tag = Tok;
+    Tok = Tok->Next;
+  }
+
+  if (Tag && !equal(Tok, "{")) {
+    Type *Ty = findTag(Tag);
+    if (!Ty)
+      errorTok(Tag, "unknown enum type");
+    if (Ty->Kind != TY_ENUM)
+      errorTok(Tag, "not an enum tag");
+    *Rest = Tok;
+    return Ty;
+  }
+
+  // "{" enumList? "}"
+  Tok = skip(Tok, "{");
+
+  // enumList
+  int I = 0; 
+  int Val = 0;
+  while (!equal(Tok, "}")) {
+    if (I++ > 0)
+      Tok = skip(Tok, ",");
+
+    char *Name = getIdent(Tok);
+    Tok = Tok->Next;
+
+    if (equal(Tok, "=")) {
+      Val = getNumber(Tok->Next);
+      Tok = Tok->Next->Next;
+    }
+
+    VarScope *S = pushScope(Name);
+    S->EnumTy = Ty;
+    S->EnumVal = Val++;
+  }
+
+  *Rest = Tok->Next;
+
+  if (Tag)
+    pushTagScope(Tag, Ty);
+  return Ty;
+}
 
 // declaration =
 // declspec (declarator ("=" expr) ? ("," declarator("=" expr)?)*)? ";"
@@ -606,7 +685,17 @@ static Node *declaration(Token **Rest, Token *Tok, Type *BaseTy)
 static bool isTypename(Token *Tok)
 {
   static char *Kw[] = {
-      "void", "_Bool",  "char", "short", "int", "long", "struct", "union", "typedef"};
+      "void",
+      "_Bool",
+      "char",
+      "short",
+      "int",
+      "long",
+      "struct",
+      "union",
+      "typedef",
+      "enum",
+  };
 
   for (int l = 0; l < sizeof(Kw) / sizeof(*Kw); ++l)
   {
@@ -726,7 +815,8 @@ static Node *compoundStmt(Token **Rest, Token *Tok)
       Type *BaseTy = declspec(&Tok, Tok, &Attr);
 
       // parse typedef statement
-      if (Attr.IsTypedef) {
+      if (Attr.IsTypedef)
+      {
         Tok = parseTypedef(Tok, BaseTy);
         continue;
       }
@@ -924,7 +1014,7 @@ static Node *newSub(Node *LHS, Node *RHS, Token *Tok)
   // ptr - num
   if (LHS->Ty->Base && isInteger(RHS->Ty))
   {
-  // use long type to save pointer
+    // use long type to save pointer
     RHS = newBinary(ND_MUL, RHS, newLong(LHS->Ty->Base->Size, Tok), Tok);
     addType(RHS);
     Node *Nd = newBinary(ND_SUB, LHS, RHS, Tok);
@@ -989,15 +1079,16 @@ static Node *mul(Token **Rest, Token *Tok)
 
     Token *Start = Tok;
 
-
     // "*" cast
-    if (equal(Tok, "*")) {
+    if (equal(Tok, "*"))
+    {
       Nd = newBinary(ND_MUL, Nd, cast(&Tok, Tok->Next), Start);
       continue;
     }
 
     // "/" cast
-    if (equal(Tok, "/")) {
+    if (equal(Tok, "/"))
+    {
       Nd = newBinary(ND_DIV, Nd, cast(&Tok, Tok->Next), Start);
       continue;
     }
@@ -1009,9 +1100,11 @@ static Node *mul(Token **Rest, Token *Tok)
 
 // parse cast
 // cast = "(" typeName ")" cast | unary
-static Node *cast(Token **Rest, Token *Tok) {
+static Node *cast(Token **Rest, Token *Tok)
+{
   // cast = "(" typeName ")" cast
-  if (equal(Tok, "(") && isTypename(Tok->Next)) {
+  if (equal(Tok, "(") && isTypename(Tok->Next))
+  {
     Token *Start = Tok;
     Type *Ty = typename(&Tok, Tok->Next);
     Tok = skip(Tok, ")");
@@ -1236,10 +1329,12 @@ static Node *funCall(Token **Rest, Token *Tok)
 
   // find function name
   VarScope *S = findVar(Start);
-  if (!S){
+  if (!S)
+  {
     errorTok(Start, "implicit declaration of a function");
   }
-  if (!S->Var || S->Var->Ty->Kind != TY_FUNC){
+  if (!S->Var || S->Var->Ty->Kind != TY_FUNC)
+  {
     errorTok(Start, "not a function");
   }
 
@@ -1248,21 +1343,24 @@ static Node *funCall(Token **Rest, Token *Tok)
 
   // 函数形参的类型
   Type *ParamTy = Ty->Params;
-   
+
   Node Head = {};
   Node *Cur = &Head;
 
   while (!equal(Tok, ")"))
   {
-    if (Cur != &Head){
+    if (Cur != &Head)
+    {
       Tok = skip(Tok, ",");
     }
     // assign
     Node *Arg = assign(&Tok, Tok);
     addType(Arg);
 
-    if(ParamTy){
-      if(ParamTy->Kind == TY_STRUCT || ParamTy->Kind == TY_UNION){
+    if (ParamTy)
+    {
+      if (ParamTy->Kind == TY_STRUCT || ParamTy->Kind == TY_UNION)
+      {
         errorTok(Arg->Tok, "passing struct or union is not supported yet");
       }
 
@@ -1280,7 +1378,7 @@ static Node *funCall(Token **Rest, Token *Tok)
   Node *Nd = newNode(ND_FUNCALL, Start);
   // ident
   Nd->FuncName = strndup(Start->Loc, Start->Len);
-  
+
   // function type
   Nd->FuncType = Ty;
   // read return value
@@ -1299,7 +1397,7 @@ static Node *funCall(Token **Rest, Token *Tok)
 //         | num
 static Node *primary(Token **Rest, Token *Tok)
 {
-    Token *Start = Tok;
+  Token *Start = Tok;
 
   // "(" "{" stmt + "}" ")"
   if (equal(Tok, "(") && equal(Tok->Next, "{"))
@@ -1320,7 +1418,8 @@ static Node *primary(Token **Rest, Token *Tok)
 
   // "sizeof" "(" typeName ")"
   if (equal(Tok, "sizeof") && equal(Tok->Next, "(") &&
-      isTypename(Tok->Next->Next)) {
+      isTypename(Tok->Next->Next))
+  {
     Type *Ty = typename(&Tok, Tok->Next->Next);
     *Rest = skip(Tok, ")");
     return newNum(Ty->Size, Start);
@@ -1345,15 +1444,27 @@ static Node *primary(Token **Rest, Token *Tok)
     }
 
     // ident
-    // find variable from locals
-    VarScope *S  = findVar(Tok);
+    // find variable and enum from locals
+    VarScope *S = findVar(Tok);
     // if no exist before, create one
-    if (!S || !S->Var)
+    if (!S || (!S->Var && !S->EnumTy))
     {
       errorTok(Tok, "undefined variable");
     }
+
+    Node *Nd;
+    
+    if (S->Var)
+    {
+      Nd = newVarNode(S->Var, Tok);
+    }
+    else
+    {
+      Nd = newNum(S->EnumVal, Tok);
+    }
+
     *Rest = Tok->Next;
-    return newVarNode(S->Var, Tok);
+    return Nd;
   }
 
   // str
@@ -1377,11 +1488,14 @@ static Node *primary(Token **Rest, Token *Tok)
 }
 
 // parse type alias
-static Token *parseTypedef(Token *Tok, Type *BaseTy){
+static Token *parseTypedef(Token *Tok, Type *BaseTy)
+{
   bool First = true;
 
-  while (!consume(&Tok, Tok, ";")){
-    if(!First){
+  while (!consume(&Tok, Tok, ";"))
+  {
+    if (!First)
+    {
       Tok = skip(Tok, ",");
     }
     First = false;
@@ -1484,7 +1598,8 @@ Obj *parse(Token *Tok)
     Type *BaseTy = declspec(&Tok, Tok, &Attr);
 
     // typedef
-    if (Attr.IsTypedef) {
+    if (Attr.IsTypedef)
+    {
       Tok = parseTypedef(Tok, BaseTy);
       continue;
     }

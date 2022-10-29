@@ -189,6 +189,7 @@ typedef enum {
     TY_SHORT,  // short
     TY_INT, // int
     TY_LONG,   // long
+    TY_ENUM,   // enum
     TY_PTR, // pointer
     TY_FUNC, // function
     TY_ARRAY, // array
@@ -249,6 +250,9 @@ void addType(Node *Nd);
 
 // array type
 Type *arrayOf(Type *Base, int Size);
+
+// enum type
+Type *enumType(void);
 
 // function type
 Type *funcType(Type *ReturnTy);
