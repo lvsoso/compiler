@@ -45,6 +45,10 @@ static Scope *Scp = &(Scope){};
 // function that parsing
 static Obj *CurrentFn;
 
+// `goto` and lable in  current function
+static Node *Gotos;
+static Node *Labels;
+
 // save local variables
 Obj *Locals;
 // save global variables
@@ -71,6 +75,8 @@ Obj *Globals;
 //        | "if" "(" expr ")" stmt ("else" stmt )?
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
 //        | "while" "(" expr ")" stmt
+//        | "goto" ident ";"
+//        | ident ":" stmt
 //        | "{" compoundStmt
 //        | exprStmt
 // exprStmt = expr? ";"
@@ -770,6 +776,8 @@ static bool isTypename(Token *Tok)
 //        | "if" "(" expr ")" stmt ("else" stmt )?
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
 //        | "while" "(" expr ")" stmt
+//        | "goto" ident ";"
+//        | ident ":" stmt
 //        | "{" compoundStmt
 //        | exprStmt
 static Node *stmt(Token **Rest, Token *Tok)
@@ -858,6 +866,29 @@ static Node *stmt(Token **Rest, Token *Tok)
     return Nd;
   }
 
+  // "goto" ident ";"
+  if (equal(Tok, "goto")) {
+    Node *Nd = newNode(ND_GOTO, Tok);
+    Nd->Label = getIdent(Tok->Next);
+
+    Nd->GotoNext = Gotos;
+    Gotos = Nd;
+    *Rest = skip(Tok->Next->Next, ";");
+    return Nd;
+  }
+
+  // ident ":" stmt
+  if (Tok->Kind == TK_IDENT && equal(Tok->Next, ":")) {
+    Node *Nd = newNode(ND_LABEL, Tok);
+    Nd->Label = strndup(Tok->Loc, Tok->Len);
+    Nd->UniqueLabel = newUniqueName();
+    Nd->LHS = stmt(Rest, Tok->Next->Next);
+
+    Nd->GotoNext = Labels;
+    Labels = Nd;
+    return Nd;
+  }
+  
   // "{" compoundStmt
   if (equal(Tok, "{"))
     return compoundStmt(Rest, Tok->Next);
@@ -1787,6 +1818,23 @@ static void createParamLVars(Type *Param)
   }
 }
 
+static void resolveGotoLabels(void) {
+  for (Node *X = Gotos; X; X = X->GotoNext) {
+    for (Node *Y = Labels; Y; Y = Y->GotoNext) {
+      if (!strcmp(X->Label, Y->Label)) {
+        X->UniqueLabel = Y->UniqueLabel;
+        break;
+      }
+    }
+
+    if (X->UniqueLabel == NULL)
+      errorTok(X->Tok->Next, "use of undeclared label");
+  }
+
+  Gotos = NULL;
+  Labels = NULL;
+}
+
 // functionDefinition = declspec declarator? ident "(" ")" "{" compoundStmt*
 static Token *function(Token *Tok, Type *BaseTy, VarAttr *Attr)
 {
@@ -1819,6 +1867,8 @@ static Token *function(Token *Tok, Type *BaseTy, VarAttr *Attr)
   Fn->Locals = Locals;
 
   leaveScope();
+
+  resolveGotoLabels();
   return Tok;
 }
 

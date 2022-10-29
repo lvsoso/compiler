@@ -549,6 +549,15 @@ static void genStmt(Node *Nd)
     for (Node *N = Nd->Body; N; N = N->Next)
       genStmt(N);
     return;
+  // goto statement
+  case ND_GOTO:
+    printLn("  j %s", Nd->UniqueLabel);
+    return;
+  // label statement
+  case ND_LABEL:
+    printLn("%s:", Nd->UniqueLabel);
+    genStmt(Nd->LHS);
+    return;
   // gen 'return' statement
   case ND_RETURN:
     printLn("# 返回语句");

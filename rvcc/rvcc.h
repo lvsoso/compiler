@@ -107,6 +107,8 @@ typedef enum {
     ND_IF,        // "if
     ND_FOR,  // "for" or "while"
     ND_BLOCK,     // { ... }，code block
+    ND_GOTO,      // goto
+    ND_LABEL,     // label statment
     ND_FUNCALL,   //function call
     ND_EXPR_STMT, // statement
     ND_STMT_EXPR, // statement expression
@@ -178,6 +180,11 @@ struct  Node
     char *FuncName; // 函数名
     Type *FuncType; // 函数类型
     Node *Args;     // 函数参数
+
+    // goto and label statement
+    char *Label;
+    char *UniqueLabel;
+    Node *GotoNext;
 
     Obj *Var;      // save ND_VAR type variable
     int64_t Val; // value of 'ND_NUM' type
