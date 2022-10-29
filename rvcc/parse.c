@@ -74,8 +74,11 @@ Obj *Globals;
 //        | exprStmt
 // exprStmt = expr? ";"
 // expr = assign ("," expr)?
-// assign = equality (assignOp assign)?
-// assignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
+// assign = bitOr (assignOp assign)?
+// bitOr = bitXor ("|" bitXor)*
+// bitXor = bitAnd ("^" bitAnd)*
+// bitAnd = equality ("&" equality)*
+// assignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^="
 // equality = relational ("==" relational | "!=" relational)*
 // relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 // add = mul ("+" mul | "-" mul)*
@@ -110,6 +113,9 @@ static Node *stmt(Token **Rest, Token *Tok);
 static Node *exprStmt(Token **Rest, Token *Tok);
 static Node *expr(Token **Rest, Token *Tok);
 static Node *assign(Token **Rest, Token *Tok);
+static Node *bitOr(Token **Rest, Token *Tok);
+static Node *bitXor(Token **Rest, Token *Tok);
+static Node *bitAnd(Token **Rest, Token *Tok);
 static Node *equality(Token **Rest, Token *Tok);
 static Node *relational(Token **Rest, Token *Tok);
 static Node *add(Token **Rest, Token *Tok);
@@ -930,12 +936,12 @@ static Node *toAssign(Node *Binary) {
   return newBinary(ND_COMMA, Expr1, Expr2, Tok);
 }
 
-// assign = equality (assignOp assign)?
-// assignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%="
+// assign = bitOr (assignOp assign)?
+// assignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^="
 static Node *assign(Token **Rest, Token *Tok)
 {
   // equality
-  Node *Nd = equality(&Tok, Tok);
+  Node *Nd = bitOr(&Tok, Tok);
 
   // 可能存在递归赋值，如a=b=1
   // ("=" assign)?
@@ -968,6 +974,54 @@ static Node *assign(Token **Rest, Token *Tok)
     return toAssign(newBinary(ND_MOD, Nd, assign(Rest, Tok->Next), Tok));
   }
 
+  // ("&=" assign)?
+  if (equal(Tok, "&=")){
+    return toAssign(newBinary(ND_BITAND, Nd, assign(Rest, Tok->Next), Tok));
+  }
+
+  // ("|=" assign)?
+  if (equal(Tok, "|=")){
+    return toAssign(newBinary(ND_BITOR, Nd, assign(Rest, Tok->Next), Tok));
+  }
+
+  // ("^=" assign)?
+  if (equal(Tok, "^=")){
+    return toAssign(newBinary(ND_BITXOR, Nd, assign(Rest, Tok->Next), Tok));
+  }
+
+  *Rest = Tok;
+  return Nd;
+}
+
+// bitOr = bitXor ("|" bitXor)*
+static Node *bitOr(Token **Rest, Token *Tok) {
+  Node *Nd = bitXor(&Tok, Tok);
+  while (equal(Tok, "|")) {
+    Token *Start = Tok;
+    Nd = newBinary(ND_BITOR, Nd, bitXor(&Tok, Tok->Next), Start);
+  }
+  *Rest = Tok;
+  return Nd;
+}
+
+// bitXor = bitAnd ("^" bitAnd)*
+static Node *bitXor(Token **Rest, Token *Tok) {
+  Node *Nd = bitAnd(&Tok, Tok);
+  while (equal(Tok, "^")) {
+    Token *Start = Tok;
+    Nd = newBinary(ND_BITXOR, Nd, bitAnd(&Tok, Tok->Next), Start);
+  }
+  *Rest = Tok;
+  return Nd;
+}
+
+// bitAnd = equality ("&" equality)*
+static Node *bitAnd(Token **Rest, Token *Tok) {
+  Node *Nd = equality(&Tok, Tok);
+  while (equal(Tok, "&")) {
+    Token *Start = Tok;
+    Nd = newBinary(ND_BITAND, Nd, equality(&Tok, Tok->Next), Start);
+  }
   *Rest = Tok;
   return Nd;
 }
@@ -1181,7 +1235,7 @@ static Node *mul(Token **Rest, Token *Tok)
       Nd = newBinary(ND_MOD, Nd, cast(&Tok, Tok->Next), Start);
       continue;
     }
-    
+
     *Rest = Tok;
     return Nd;
   }
