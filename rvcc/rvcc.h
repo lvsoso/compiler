@@ -265,6 +265,9 @@ Type *arrayOf(Type *Base, int Size);
 // enum type
 Type *enumType(void);
 
+// struct
+Type *structType(void);
+
 // function type
 Type *funcType(Type *ReturnTy);
 

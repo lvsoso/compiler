@@ -1416,23 +1416,40 @@ static Type *structUnionDecl(Token **Rest, Token *Tok)
 
   if (Tag && !equal(Tok, "{"))
   {
-    Type *Ty = findTag(Tag);
-    if (!Ty)
-    {
-      errorTok(Tag, "unknown struct type");
-    }
     *Rest = Tok;
+
+    Type *Ty = findTag(Tag);
+    if (Ty){
+      return Ty;
+    }
+
+    Ty = structType();
+    Ty->Size = -1;
+    pushTagScope(Tag, Ty);
     return Ty;
   }
 
-  // calloc a struct
-  Type *Ty = calloc(1, sizeof(Type));
-  Ty->Kind = TY_STRUCT;
-  structMembers(Rest, Tok->Next, Ty);
+  // ("{" structMembers)?
+  Tok = skip(Tok, "{");
+
+  // create a new struct
+  Type *Ty = structType();
+  structMembers(Rest, Tok, Ty);
+
   Ty->Align = 1;
 
-  if (Tag)
+  // cover before define
+  if (Tag) {
+    for (TagScope *S = Scp->Tags; S; S = S->Next) {
+      if (equal(Tag, S->Name)) {
+        *S->Ty = *Ty;
+        return S->Ty;
+      }
+    }
+
     pushTagScope(Tag, Ty);
+  }
+
   return Ty;
 }
 

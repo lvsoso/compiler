@@ -60,6 +60,8 @@ Type *arrayOf(Type *Base, int Len)
 
 Type *enumType(void) { return newType(TY_ENUM, 4, 4); }
 
+Type *structType(void) { return newType(TY_STRUCT, 0, 1); }
+
 static Type *getCommonType(Type *Ty1, Type * Ty2){
     if(Ty1->Base){
         return pointerTo(Ty1->Base);
