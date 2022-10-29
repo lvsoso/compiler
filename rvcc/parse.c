@@ -911,7 +911,7 @@ static Node *compoundStmt(Token **Rest, Token *Tok)
   while (!equal(Tok, "}"))
   {
     // declaration
-    if (isTypename(Tok))
+    if (isTypename(Tok) && !equal(Tok->Next, ":"))
     {
       VarAttr Attr = {};
       Type *BaseTy = declspec(&Tok, Tok, &Attr);
