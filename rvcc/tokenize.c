@@ -357,6 +357,31 @@ static Token *readCharLiteral(char *Start) {
 }
 
 
+static Token *readIntLiteral(char *Start) {
+  char *P = Start;
+
+  int Base = 10;
+  if (!strncasecmp(P, "0x", 2) && isxdigit(P[2])) {
+    P += 2;
+    Base = 16;
+  } else if (!strncasecmp(P, "0b", 2) && (P[2] == '0' || P[2] == '1')) {
+    P += 2;
+    Base = 2;
+  } else if (*P == '0') {
+    Base = 8;
+  }
+
+  long Val = strtoul(P, &P, Base);
+  if (isalnum(*P)){
+    errorAt(P, "invalid digit");
+  }
+
+  Token *Tok = newToken(TK_NUM, Start, P);
+  Tok->Val = Val;
+  return Tok;
+}
+
+
 // convert 'return' to keyword
 static void convertKeywords(Token *Tok)
 {
@@ -434,12 +459,9 @@ Token *tokenize(char *Filename, char *P)
         // 解析数字
         if (isdigit(*P))
         {
-            Cur->Next = newToken(TK_NUM, P, P);
+            Cur->Next = readIntLiteral(P);
             Cur = Cur->Next;
-            const char *OldPtr = P;
-            // here move the  pointer
-            Cur->Val = strtoul(P, &P, 10);
-            Cur->Len = P - OldPtr;
+            P += Cur->Len;
             continue;
         }
 
