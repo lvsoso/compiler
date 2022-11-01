@@ -526,6 +526,9 @@ static void genStmt(Node *Nd)
     // handle body
     printLn("\n# Then语句%d", C);
     genStmt(Nd->Then);
+    // continute
+    printLn("%s:", Nd->ContLabel);
+    
     // handle increase
     if (Nd->Inc)
     {

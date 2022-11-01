@@ -200,8 +200,7 @@ static bool isKeyword(Token *Tok)
     // keyword list
     static char *KW[] = {"return", "if", "else", "for", "while",
                          "int", "sizeof", "char", "struct", "union",
-                         "long", "short", "void", "typedef", "_Bool",  "enum",  "static", 
-                         "goto", "break"};
+                         "long", "short", "void", "typedef", "_Bool",  "enum",  "static", "goto", "continue"};
 
     // for-loop the keyword list and check
     for (int l = 0; l < sizeof(KW) / sizeof(*KW); ++l)

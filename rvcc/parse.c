@@ -51,6 +51,8 @@ static Node *Labels;
 
 static char *BrkLabel;
 
+static char *ContLabel;
+
 // save local variables
 Obj *Locals;
 // save global variables
@@ -781,6 +783,7 @@ static bool isTypename(Token *Tok)
 //        | "while" "(" expr ")" stmt
 //        | "goto" ident ";"
 //        | "break" ";"
+//        | "continue" ";"
 //        | ident ":" stmt
 //        | "{" compoundStmt
 //        | exprStmt
@@ -828,8 +831,10 @@ static Node *stmt(Token **Rest, Token *Tok)
 
     // save break lable
     char *Brk = BrkLabel;
+    char *Cont = ContLabel;
 
     BrkLabel = Nd->BrkLabel = newUniqueName();
+    ContLabel = Nd->ContLabel = newUniqueName();
 
     // exprStmt
     if (isTypename(Tok)) {
@@ -859,6 +864,7 @@ static Node *stmt(Token **Rest, Token *Tok)
     leaveScope();
     
     BrkLabel = Brk;
+    ContLabel = Cont;
 
     return Nd;
   }
@@ -876,13 +882,16 @@ static Node *stmt(Token **Rest, Token *Tok)
 
 
     char *Brk = BrkLabel;
+    char *Cont = ContLabel;
 
    BrkLabel = Nd->BrkLabel = newUniqueName();
+   ContLabel = Nd->ContLabel = newUniqueName();
 
     // stmt
     Nd->Then = stmt(Rest, Tok);
 
     BrkLabel = Brk;
+    ContLabel = Cont;
 
     return Nd;
   }
@@ -911,6 +920,18 @@ static Node *stmt(Token **Rest, Token *Tok)
     return Nd;
 
   }
+
+  // "continue" ";"
+if(equal(Tok, "continue")){
+  if(!ContLabel){
+    errorTok(Tok, "stray continute");
+  }
+
+  Node *Nd = newNode(ND_GOTO, Tok);
+  Nd->UniqueLabel = ContLabel;
+  *Rest  = skip(Tok->Next, ";");
+  return Nd;
+}
 
   // ident ":" stmt
   if (Tok->Kind == TK_IDENT && equal(Tok->Next, ":")) {

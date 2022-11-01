@@ -172,6 +172,9 @@ struct  Node
     // "break" tag
     char *BrkLabel;
 
+    // "continue" tag
+    char *ContLabel;
+
     // code block
     Node *Body;
     
