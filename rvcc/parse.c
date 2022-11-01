@@ -53,6 +53,9 @@ static char *BrkLabel;
 
 static char *ContLabel;
 
+// is not empty when parsing "switch" statment
+static Node *CurrentSwitch;
+
 // save local variables
 Obj *Locals;
 // save global variables
@@ -77,6 +80,8 @@ Obj *Globals;
 //    declspec (declarator ("=" expr)? ("," declarator ("=" expr)?)*)? ";"
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
+//        | "case" num ":" stmt
+//        | "default" ":" stmt
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
 //        | "while" "(" expr ")" stmt
 //        | "goto" ident ";"
@@ -779,6 +784,9 @@ static bool isTypename(Token *Tok)
 
 // stmt = "return" expr ";"
 //        | "if" "(" expr ")" stmt ("else" stmt )?
+//        | "switch" "(" expr ")" stmt
+//        | "case" num ":" stmt
+//        | "default" ":" stmt
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
 //        | "while" "(" expr ")" stmt
 //        | "goto" ident ";"
@@ -817,6 +825,81 @@ static Node *stmt(Token **Rest, Token *Tok)
       Nd->Els = stmt(&Tok, Tok->Next);
     }
     *Rest = Tok;
+    return Nd;
+  }
+
+// "switch" "(" expr ")" stmt
+  if (equal(Tok, "switch")) {
+    Node *Nd = newNode(ND_SWITCH, Tok);
+    Tok = skip(Tok->Next, "(");
+    Nd->Cond = expr(&Tok, Tok);
+    Tok = skip(Tok, ")");
+
+    // save before CurrentSwitch
+    Node *Sw = CurrentSwitch;
+
+    // save current switch
+    CurrentSwitch = Nd;
+
+    // save before break tag's name
+    char *Brk = BrkLabel;
+
+    // sat break tag's name
+    BrkLabel = Nd->BrkLabel = newUniqueName();
+
+    // parse case
+    // stmt
+    Nd->Then = stmt(Rest, Tok);
+
+    CurrentSwitch = Sw;
+    BrkLabel = Brk;
+
+    return Nd;
+  }
+
+  // "case" num ":" stmt
+  if (equal(Tok, "case")) {
+    if (!CurrentSwitch){
+      errorTok(Tok, "stray case");
+    }
+    // case value
+    int Val = getNumber(Tok->Next);
+
+    Node *Nd = newNode(ND_CASE, Tok);
+    Tok = skip(Tok->Next->Next, ":");
+    Nd->Label = newUniqueName();
+    
+    // case statments
+    Nd->LHS = stmt(Rest, Tok);
+    
+    // case value
+    Nd->Val = Val;
+
+    // save old case head
+    Nd->CaseNext = CurrentSwitch->CaseNext;
+    
+    // save new case
+    CurrentSwitch->CaseNext = Nd;
+
+    return Nd;
+  }
+
+  // "default" ":" stmt
+  if (equal(Tok, "default")) {
+    if (!CurrentSwitch){
+      errorTok(Tok, "stray default");
+    }
+
+    Node *Nd = newNode(ND_CASE, Tok);
+
+    Tok = skip(Tok->Next, ":");
+
+    Nd->Label = newUniqueName();
+
+    Nd->LHS = stmt(Rest, Tok);
+
+    // save default path
+    CurrentSwitch->DefaultCase = Nd;
     return Nd;
   }
 

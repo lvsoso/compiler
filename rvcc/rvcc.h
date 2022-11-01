@@ -106,6 +106,8 @@ typedef enum {
     ND_RETURN, // return
     ND_IF,        // "if
     ND_FOR,  // "for" or "while"
+    ND_SWITCH,    // "switch"
+    ND_CASE,      // "case"
     ND_BLOCK,     // { ... }，code block
     ND_GOTO,      // goto
     ND_LABEL,     // label statment
@@ -191,6 +193,10 @@ struct  Node
     char *Label;
     char *UniqueLabel;
     Node *GotoNext;
+
+    // switch和case
+    Node *CaseNext;
+    Node *DefaultCase;
 
     Obj *Var;      // save ND_VAR type variable
     int64_t Val; // value of 'ND_NUM' type
