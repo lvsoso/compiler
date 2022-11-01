@@ -161,6 +161,14 @@ void addType(Node *Nd)
     case ND_VAR:
         Nd->Ty = Nd->Var->Ty;
         return;
+    case ND_COND:
+        if (Nd->Then->Ty->Kind == TY_VOID || Nd->Els->Ty->Kind == TY_VOID) {
+        Nd->Ty = TyVoid;
+        } else {
+        usualArithConv(&Nd->Then, &Nd->Els);
+        Nd->Ty = Nd->Then->Ty;
+        }
+        return;
 
     // 将节点类型设为 右部的类型?
     case ND_COMMA:

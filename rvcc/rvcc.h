@@ -103,6 +103,7 @@ typedef enum {
     ND_LOGAND,    // &&，与
     ND_LOGOR,     // ||，或
     ND_ASSIGN, // assign variable's value
+    ND_COND,      // ?:
     ND_COMMA,     // , 
     ND_MEMBER,    // . struct memeber access
     ND_RETURN, // return

@@ -91,7 +91,8 @@ Obj *Globals;
 //        | exprStmt
 // exprStmt = expr? ";"
 // expr = assign ("," expr)?
-// assign = logOr (assignOp assign)?
+// assign = conditional (assignOp assign)?
+// conditional = logOr ("?" expr ":" conditional)?
 // logOr = logAnd ("||" logAnd)*
 // logAnd = bitOr ("&&" bitOr)*
 // bitOr = bitXor ("|" bitXor)*
@@ -135,6 +136,7 @@ static Node *stmt(Token **Rest, Token *Tok);
 static Node *exprStmt(Token **Rest, Token *Tok);
 static Node *expr(Token **Rest, Token *Tok);
 static Node *assign(Token **Rest, Token *Tok);
+static Node *conditional(Token **Rest, Token *Tok);
 static Node *logOr(Token **Rest, Token *Tok);
 static Node *logAnd(Token **Rest, Token *Tok);
 static Node *bitOr(Token **Rest, Token *Tok);
@@ -1145,13 +1147,12 @@ static Node *toAssign(Node *Binary) {
   return newBinary(ND_COMMA, Expr1, Expr2, Tok);
 }
 
-// assign = logOr (assignOp assign)?
+// assign = conditional (assignOp assign)?
 // assignOp = "=" | "+=" | "-=" | "*=" | "/=" | "%=" | "&=" | "|=" | "^="
 //          | "<<=" | ">>="
-static Node *assign(Token **Rest, Token *Tok)
-{
-  // equality
-  Node *Nd = logOr(&Tok, Tok);
+static Node *assign(Token **Rest, Token *Tok) {
+  // conditional
+  Node *Nd = conditional(&Tok, Tok);
 
   // 可能存在递归赋值，如a=b=1
   // ("=" assign)?
@@ -1213,6 +1214,32 @@ static Node *assign(Token **Rest, Token *Tok)
   *Rest = Tok;
   return Nd;
 }
+
+// conditional = logOr ("?" expr ":" conditional)?
+static Node *conditional(Token **Rest, Token *Tok) {
+  // logOr
+  Node *Cond = logOr(&Tok, Tok);
+
+  // "?"
+  if (!equal(Tok, "?")) {
+    *Rest = Tok;
+    return Cond;
+  }
+
+  // expr ":" conditional
+  Node *Nd = newNode(ND_COND, Tok);
+  Nd->Cond = Cond;
+  
+  // expr ":"
+  Nd->Then = expr(&Tok, Tok->Next);
+  
+  Tok = skip(Tok, ":");
+  
+  // conditiona
+  Nd->Els = conditional(Rest, Tok);
+  return Nd;
+}
+
 
 // logOr = logAnd ("||" logAnd)*
 static Node *logOr(Token **Rest, Token *Tok) {
