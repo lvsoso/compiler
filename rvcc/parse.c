@@ -49,6 +49,8 @@ static Obj *CurrentFn;
 static Node *Gotos;
 static Node *Labels;
 
+static char *BrkLabel;
+
 // save local variables
 Obj *Locals;
 // save global variables
@@ -76,6 +78,7 @@ Obj *Globals;
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
 //        | "while" "(" expr ")" stmt
 //        | "goto" ident ";"
+//        | "break" ";"
 //        | ident ":" stmt
 //        | "{" compoundStmt
 //        | exprStmt
@@ -777,6 +780,7 @@ static bool isTypename(Token *Tok)
 //        | "for" "(" exprStmt expr? ";" expr? ")" stmt
 //        | "while" "(" expr ")" stmt
 //        | "goto" ident ";"
+//        | "break" ";"
 //        | ident ":" stmt
 //        | "{" compoundStmt
 //        | exprStmt
@@ -806,8 +810,9 @@ static Node *stmt(Token **Rest, Token *Tok)
     // stmt，if match condition
     Nd->Then = stmt(&Tok, Tok);
     // ("else" stmt)?, if no-match condition
-    if (equal(Tok, "else"))
+    if (equal(Tok, "else")){
       Nd->Els = stmt(&Tok, Tok->Next);
+    }
     *Rest = Tok;
     return Nd;
   }
@@ -820,6 +825,11 @@ static Node *stmt(Token **Rest, Token *Tok)
     Tok = skip(Tok->Next, "(");
 
     enterScope();
+
+    // save break lable
+    char *Brk = BrkLabel;
+
+    BrkLabel = Nd->BrkLabel = newUniqueName();
 
     // exprStmt
     if (isTypename(Tok)) {
@@ -848,6 +858,8 @@ static Node *stmt(Token **Rest, Token *Tok)
 
     leaveScope();
     
+    BrkLabel = Brk;
+
     return Nd;
   }
 
@@ -861,8 +873,17 @@ static Node *stmt(Token **Rest, Token *Tok)
     Nd->Cond = expr(&Tok, Tok);
     // ")"
     Tok = skip(Tok, ")");
+
+
+    char *Brk = BrkLabel;
+
+   BrkLabel = Nd->BrkLabel = newUniqueName();
+
     // stmt
     Nd->Then = stmt(Rest, Tok);
+
+    BrkLabel = Brk;
+
     return Nd;
   }
 
@@ -875,6 +896,20 @@ static Node *stmt(Token **Rest, Token *Tok)
     Gotos = Nd;
     *Rest = skip(Tok->Next->Next, ";");
     return Nd;
+  }
+
+
+  // "break" ";"
+  if (equal(Tok, "break")) {
+    if (!BrkLabel){
+      errorTok(Tok, "stray break");
+    }
+
+    Node *Nd = newNode(ND_GOTO, Tok);
+    Nd->UniqueLabel = BrkLabel;
+    *Rest = skip(Tok->Next, ";");
+    return Nd;
+
   }
 
   // ident ":" stmt

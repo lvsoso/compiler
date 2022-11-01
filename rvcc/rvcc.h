@@ -169,6 +169,9 @@ struct  Node
     Node *Init;// init statement
     Node *Inc;  // increase statement
 
+    // "break" tag
+    char *BrkLabel;
+
     // code block
     Node *Body;
     

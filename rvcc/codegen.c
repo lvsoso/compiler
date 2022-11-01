@@ -519,8 +519,8 @@ static void genStmt(Node *Nd)
       genExpr(Nd->Cond);
 
       // if result match zero, will jump to end
-      printLn("  # 若a0为0，则跳转到循环%d的.L.end.%d段", C, C);
-      printLn("  beqz a0, .L.end.%d", C);
+      printLn("  # 若a0为0，则跳转到循环%d的%s段", C, Nd->BrkLabel);
+      printLn("  beqz a0, %s", Nd->BrkLabel);
     }
 
     // handle body
@@ -538,8 +538,8 @@ static void genStmt(Node *Nd)
     printLn("  j .L.begin.%d", C);
 
     // end of for-loop
-    printLn("\n# 循环%d的.L.end.%d段标签", C, C);
-    printLn(".L.end.%d:", C);
+    printLn("\n# 循环%d的%s段标签", C, Nd->BrkLabel);
+    printLn("%s:", Nd->BrkLabel);
 
     return;
   }
