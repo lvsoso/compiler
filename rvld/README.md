@@ -20,3 +20,10 @@ docker  ps | grep "golang:1.19" | awk '{ print $1}' | xargs -I {} docker commit 
 # 使用新的镜像进行开发
 docker run -u root -it --rm -v $PWD:/code/rvld -w /code/rvld golang:1.19-dev
 ```
+
+
+### REFER
+(一)
+[https://en.wikipedia.org/wiki/Executable_and_Linkable_Format](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)
+[https://fasterthanli.me/content/series/making-our-own-executable-packer/part-1/assets/elf64-file-header.bfa657ccd8ab3a7d.svg](https://fasterthanli.me/content/series/making-our-own-executable-packer/part-1/assets/elf64-file-header.bfa657ccd8ab3a7d.svg)
+
