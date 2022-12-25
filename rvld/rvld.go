@@ -37,8 +37,8 @@ func main() {
 	fmt.Printf("%v\n", remaining)
 
 	linker.ReadInputFiles(ctx, remaining)
-
 	linker.ResolveSymbols(ctx)
+	linker.RegisterSectionPieces(ctx)
 
 	for _, o := range ctx.Objs {
 		if o.File.Name == "out/tests/hello/a.o" {
