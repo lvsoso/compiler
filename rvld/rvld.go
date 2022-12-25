@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"rvld/pkg/linker"
 	"rvld/pkg/utils"
 	"strings"
@@ -37,11 +38,17 @@ func main() {
 
 	linker.ReadInputFiles(ctx, remaining)
 
-	println(len(ctx.Objs))
+	linker.ResolveSymbols(ctx)
 
-	// for _, obj := range ctx.Objs {
-	// 	println(obj.File.Name)
-	// }
+	for _, o := range ctx.Objs {
+		if o.File.Name == "out/tests/hello/a.o" {
+			for _, sym := range o.Symbols {
+				if sym.Name == "puts" {
+					println(sym.File.File.Parent.Name)
+				}
+			}
+		}
+	}
 
 }
 
@@ -134,6 +141,10 @@ func parseArgs(ctx *linker.Context) []string {
 			remaining = append(remaining, args[0])
 			args = args[1:]
 		}
+	}
+
+	for i, path := range ctx.Args.LibraryPaths {
+		ctx.Args.LibraryPaths[i] = filepath.Clean(path)
 	}
 
 	return remaining

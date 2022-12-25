@@ -27,3 +27,12 @@ docker run -u root -it --rm -v $PWD:/code/rvld -w /code/rvld golang:1.19-dev
 [https://en.wikipedia.org/wiki/Executable_and_Linkable_Format](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)
 [https://fasterthanli.me/content/series/making-our-own-executable-packer/part-1/assets/elf64-file-header.bfa657ccd8ab3a7d.svg](https://fasterthanli.me/content/series/making-our-own-executable-packer/part-1/assets/elf64-file-header.bfa657ccd8ab3a7d.svg)
 
+(二)
+[https://en.wikipedia.org/wiki/Executable_and_Linkable_Format](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format)
+[https://refspecs.linuxbase.org/elf/gabi4+/ch4.sheader.html](https://refspecs.linuxbase.org/elf/gabi4+/ch4.sheader.html)
+
+
+### Other's Reffer
+[计算机原理系列之二 ——– 详解ELF文件](https://luomuxiaoxiao.com/?p=139)
+[ELF 文件](https://ctf-wiki.org/executable/elf/structure/basic-info/)
+[ELF文件格式第三讲，节头（section header)](https://www.cnblogs.com/AndroidBinary/p/15366466.html)

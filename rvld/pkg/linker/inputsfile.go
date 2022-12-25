@@ -10,9 +10,12 @@ type InputFile struct {
 	File         *File
 	ElfSections  []Shdr
 	ElfSyms      []Sym
-	FirstGlobal  int64
+	FirstGlobal  int
 	ShStrtab     []byte // saved sections's name
 	SymbolStrtab []byte // symbol string table
+	IsAlive      bool
+	Symbols      []*Symbol
+	LocalSymbols []Symbol
 }
 
 func NewInputFile(file *File) InputFile {
@@ -65,13 +68,7 @@ func (f *InputFile) GetBytesFromIdx(idx int64) []byte {
 
 func (f *InputFile) FillUpElfSyms(s *Shdr) {
 	bs := f.GetBytesFromShdr(s)
-	nums := len(bs) / SymSize
-	f.ElfSyms = make([]Sym, 0, nums)
-	for nums > 0 {
-		f.ElfSyms = append(f.ElfSyms, utils.Read[Sym](bs))
-		bs = bs[SymSize:]
-		nums--
-	}
+	f.ElfSyms = utils.ReadSlice[Sym](bs, SymSize)
 }
 
 func (f *InputFile) FindSection(ty uint32) *Shdr {
